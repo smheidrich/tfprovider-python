@@ -4,6 +4,7 @@ Implementation of the Terraform variant of the RPCPlugin spec.
 import datetime
 from base64 import b64encode
 from concurrent import futures
+import os
 from sys import stderr
 
 import grpc
@@ -23,6 +24,7 @@ class RPCPluginServer:
 
     def run(self):
         port = "1234"
+        parent_pid = os.getppid()
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         tfplugin64_pb2_grpc.add_ProviderServicer_to_server(
             ProviderServicer(), server
@@ -42,7 +44,13 @@ class RPCPluginServer:
         server.start()
         print(f"server listening on port {port}", file=stderr)
         print(f"1|6|tcp|127.0.0.1:{port}|grpc|{cert_base64}", flush=True)
-        server.wait_for_termination()
+        # RPCPlugin clients stop plugins with SIGKILL, which kills a process
+        # immediately but leaves its children intact. Python RPCPlugin servers
+        # will generally be launched by a bash script, so SIGKILL will only
+        # kill that script's process but not the Python interpreter. A simple
+        # way to detect this is to see if the parent PID has changed:
+        while os.getppid() == parent_pid:
+            server.wait_for_termination(1)
 
 
 def generate_server_cert() -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
