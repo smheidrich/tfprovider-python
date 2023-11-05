@@ -9,13 +9,6 @@ class ProviderServicer(tfplugin64_pb2_grpc.ProviderServicer):
                 plan_destroy=False,
                 get_provider_schema_optional=False,
             ),
-            # diagnostics=[
-                # tfplugin64_pb2.Diagnostic(
-                    # severity=1,
-                    # summary="hello world!",
-                    # detail="if you see this, it works. kind of",
-                # )
-            # ],
         )
 
     def GetProviderSchema(self, request, context):
@@ -24,8 +17,8 @@ class ProviderServicer(tfplugin64_pb2_grpc.ProviderServicer):
                 version=1,
                 block=tfplugin64_pb2.Schema.Block(
                     version=1,
-                    description="some schema",
+                    description="Hello World provider",
                     description_kind=tfplugin64_pb2.StringKind.PLAIN,
-                )
-            )
+                ),
+            ),
         )

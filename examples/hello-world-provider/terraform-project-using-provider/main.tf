@@ -6,3 +6,10 @@ terraform {
     }
   }
 }
+
+provider "helloworld" {
+  foo = "bar"
+}
+
+resource helloworld_foo "foo" {
+}
