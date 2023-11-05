@@ -2,9 +2,9 @@
 Implementation of the Terraform variant of the RPCPlugin spec.
 """
 import datetime
+import os
 from base64 import b64encode
 from concurrent import futures
-import os
 from sys import stderr
 
 import grpc
@@ -13,7 +13,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
-from . import tfplugin64_pb2_grpc
+from . import grpc_controller_pb2_grpc, tfplugin64_pb2_grpc
+from .controller_servicer import ControllerServicer
 from .health_servicer import _configure_health_server
 from .provider_servicer import ProviderServicer
 
@@ -26,6 +27,9 @@ class RPCPluginServer:
         port = "1234"
         parent_pid = os.getppid()
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        grpc_controller_pb2_grpc.add_GRPCControllerServicer_to_server(
+            ControllerServicer(server), server
+        )
         tfplugin64_pb2_grpc.add_ProviderServicer_to_server(
             ProviderServicer(), server
         )
@@ -50,7 +54,8 @@ class RPCPluginServer:
         # kill that script's process but not the Python interpreter. A simple
         # way to detect this is to see if the parent PID has changed:
         while os.getppid() == parent_pid:
-            server.wait_for_termination(1)
+            if not server.wait_for_termination(1):
+                break
 
 
 def generate_server_cert() -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
