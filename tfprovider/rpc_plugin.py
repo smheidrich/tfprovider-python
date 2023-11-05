@@ -70,8 +70,8 @@ def generate_server_cert() -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
             x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
             x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "California"),
             x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "My Company"),
-            x509.NameAttribute(NameOID.COMMON_NAME, "mysite.com"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MyCompany"),
+            x509.NameAttribute(NameOID.COMMON_NAME, "localhost"),
         ]
     )
     cert = (
@@ -80,7 +80,10 @@ def generate_server_cert() -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
         .issuer_name(issuer)
         .public_key(key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.datetime.now(datetime.timezone.utc))
+        .not_valid_before(
+            datetime.datetime.now(datetime.timezone.utc)
+            - datetime.timedelta(seconds=30)
+        )
         .not_valid_after(
             datetime.datetime.now(datetime.timezone.utc)
             + datetime.timedelta(days=3)  # valid for 3 days
@@ -89,6 +92,22 @@ def generate_server_cert() -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
             x509.SubjectAlternativeName([x509.DNSName("localhost")]),
             critical=False,
         )
+        .add_extension(
+            x509.KeyUsage(
+                True, False, True, True, False, True, False, False, False
+            ),
+            critical=False,
+        )
+        .add_extension(
+            x509.ExtendedKeyUsage(
+                [
+                    x509.ExtendedKeyUsageOID.CLIENT_AUTH,
+                    x509.ExtendedKeyUsageOID.SERVER_AUTH,
+                ]
+            ),
+            critical=False,
+        )
+        .add_extension(x509.BasicConstraints(True, None), critical=False)
         .sign(key, hashes.SHA256())  # sign w/ private key
     )
     return cert, key
