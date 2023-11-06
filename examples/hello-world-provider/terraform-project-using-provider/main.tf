@@ -11,5 +11,6 @@ provider "helloworld" {
   foo = "bar"
 }
 
-resource helloworld_foo "foo" {
+resource helloworld_res "myhelloworld" {
+  foo = "bar"
 }
