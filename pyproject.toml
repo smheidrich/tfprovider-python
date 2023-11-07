@@ -14,6 +14,7 @@ python = "^3.11"
 grpcio = "^1.59.0"
 grpcio-health-checking = "^1.59.0"
 cryptography = "^41.0.4"
+msgpack = "^1.0.7"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.3.1"
@@ -26,6 +27,9 @@ black = "^23.7.0"
 #[tool.poetry.group.doc.dependencies]
 #sphinx = "^7.1.2"
 #insipid-sphinx-theme = "^0.4.1"
+types-protobuf = "^4.24.0.4"
+msgpack-types = "^0.2.0"
+grpc-stubs = "^1.53.0.3"
 
 [tool.black]
 line-length = 79

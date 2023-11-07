@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     helloworld = {
-      source = "local/hello-world-provider"
+      source = "local/hello-world-provider-lowlevel"
       version = "0.1.0"
     }
   }

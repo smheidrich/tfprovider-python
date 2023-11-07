@@ -1,0 +1,11 @@
+#!/bin/bash
+# This is a really rudimentary launcher script for the example provider.
+# It relies on Terraform being launched in an environment (e.g. venv) whose
+# Python installation already has tfprovider installed.
+# For non-example providers, consider using terradep to build more robust and
+# user-friendly launcher scripts that handle issues like venv
+# discovery/creation and installation.
+terraform_plugin_dir=$(dirname $(realpath -s $0))
+export PYTHONPATH=\
+"$terraform_plugin_dir/../python-package:$PYTHONPATH"
+python3 -m hello_world_provider
