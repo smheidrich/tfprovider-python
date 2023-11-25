@@ -1,11 +1,11 @@
-import json
 from sys import stderr
 
-import msgpack
-
+from tfprovider.dynamic_value import decode_block_dynamic_value
 from tfprovider.rpc_plugin import RPCPluginServer
 from tfprovider.tfplugin64_pb2 import (
+    ConfigureProvider,
     GetMetadata,
+    PlanResourceChange,
     ServerCapabilities,
     ValidateProviderConfig,
     ValidateResourceConfig,
@@ -71,18 +71,20 @@ class ProviderServicer(ProviderServicer):
     def ValidateProviderConfig(self, request, context):
         print(request.config, file=stderr)
         print(type(request.config.msgpack), file=stderr)
-        if b := request.config.msgpack:
-            block = msgpack.unpackb(b)
-            foo = StringWireType().unmarshal_value_msgpack(block["foo"])
-            print(f"{foo=}", file=stderr)
-        elif b := request.config.json:
-            block = json.loads(b.decode("utf-8"))
-            foo = StringWireType().unmarshal_value_json(block["foo"])
-            print(f"{foo=}", file=stderr)
+        foo = decode_block_dynamic_value(
+            request.config, provider_schema.provider.block
+        )["foo"]
+        print(f"{foo=}", file=stderr)
         return ValidateProviderConfig.Response()
 
     def ValidateResourceConfig(self, request, context):
         return ValidateResourceConfig.Response()
+
+    def ConfigureProvider(self, request, context):
+        return ConfigureProvider.Response()
+
+    def PlanResourceChange(self, request, context):
+        return PlanResourceChange.Response(planned_state=request.proposed_new_state)
 
 
 def main():
