@@ -10,7 +10,7 @@ from enum import StrEnum, auto
 from typing import Any, Union
 
 from . import tfplugin64_pb2 as pb
-from .wire_format import WireType
+from .wire_format import AttributeWireType
 
 
 class NotSet(StrEnum):
@@ -70,7 +70,7 @@ class Block:
 @dataclass
 class Attribute:
     name: str
-    type: WireType
+    type: AttributeWireType
     # nested_type: NestingObject  # TODO
     description: str | NotSet = NOT_SET
     required: bool | NotSet = NOT_SET

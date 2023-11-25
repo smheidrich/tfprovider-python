@@ -56,7 +56,7 @@ T = TypeVar("T")
 # types
 
 
-class WireType(ABC, Generic[F, T]):
+class AttributeWireType(ABC, Generic[F, T]):
     from_python_type: type[F]
     to_python_type: type[T]
 
@@ -68,7 +68,7 @@ class WireType(ABC, Generic[F, T]):
         pass
 
 
-class JsonSerializableWireType(WireType[F, T]):
+class JsonSerializableWireType(AttributeWireType[F, T]):
     @abstractmethod
     def marshal_value_json(self, value: F) -> ImmutableJsonish:
         pass
@@ -78,7 +78,7 @@ class JsonSerializableWireType(WireType[F, T]):
         pass
 
 
-class MsgpackSerializableWireType(WireType[F, T]):
+class MsgpackSerializableWireType(AttributeWireType[F, T]):
     @abstractmethod
     def marshal_value_msgpack(self, value: F) -> ImmutableMsgPackish:
         pass
@@ -162,7 +162,7 @@ class BoolWireType(UnmarshalJsonishNotNonePrimitivesChecked):
         return "bool"
 
 
-W = TypeVar("W", bound=WireType)
+W = TypeVar("W", bound=AttributeWireType)
 WJM = TypeVar("WJM", bound=JsonAndMsgpackSerializableWireType)
 WM = TypeVar("WM", bound=MsgpackSerializableWireType)
 
