@@ -1,6 +1,7 @@
+from dataclasses import dataclass
 from sys import stderr
 
-from tfprovider.dynamic_value import decode_block_dynamic_value
+from tfprovider.dynamic_value import DynamicValueDecoder
 from tfprovider.rpc_plugin import RPCPluginServer
 from tfprovider.tfplugin64_pb2 import (
     ConfigureProvider,
@@ -10,7 +11,7 @@ from tfprovider.tfplugin64_pb2 import (
     ValidateProviderConfig,
     ValidateResourceConfig,
 )
-from tfprovider.tfplugin64_pb2_grpc import ProviderServicer
+from tfprovider.tfplugin64_pb2_grpc import ProviderServicer as BaseProviderServicer
 from tfprovider.usable_schema import (
     Attribute,
     Block,
@@ -18,7 +19,7 @@ from tfprovider.usable_schema import (
     Schema,
     StringKind,
 )
-from tfprovider.wire_format import StringWireType
+from tfprovider.wire_format import ImmutableMsgPackish, StringWireType
 
 provider_schema = ProviderSchema(
     provider=Schema(
@@ -56,8 +57,16 @@ provider_schema = ProviderSchema(
     },
 )
 
+@dataclass
+class HelloWorldResConfig:
+    foo: str
 
-class ProviderServicer(ProviderServicer):
+class HelloWorldResSchemaBlockDecoder(DynamicValueDecoder):
+    def unmarshal(self, value: ImmutableMsgPackish) -> HelloWorldResConfig:
+        assert isinstance(value, dict)
+        return HelloWorldResConfig(foo=value["foo"])
+
+class ProviderServicer(BaseProviderServicer):
     def GetMetadata(self, request, context):
         return GetMetadata.Response(
             server_capabilities=ServerCapabilities(
@@ -71,9 +80,9 @@ class ProviderServicer(ProviderServicer):
     def ValidateProviderConfig(self, request, context):
         print(request.config, file=stderr)
         print(type(request.config.msgpack), file=stderr)
-        foo = decode_block_dynamic_value(
-            request.config, provider_schema.provider.block
-        )["foo"]
+        decoder = HelloWorldResSchemaBlockDecoder()
+        config = decoder.decode(request.config)
+        foo = config.foo
         print(f"{foo=}", file=stderr)
         return ValidateProviderConfig.Response()
 
