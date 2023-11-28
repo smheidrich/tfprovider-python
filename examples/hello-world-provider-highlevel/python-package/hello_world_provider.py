@@ -20,6 +20,7 @@ from tfprovider.usable_schema import (
     StringKind,
 )
 from tfprovider.wire_format import ImmutableMsgPackish, StringWireType
+from tfprovider.wire_marshaling import StringWireTypeUnmarshaler
 
 provider_schema = ProviderSchema(
     provider=Schema(
@@ -57,14 +58,20 @@ provider_schema = ProviderSchema(
     },
 )
 
+
 @dataclass
 class HelloWorldResConfig:
     foo: str
 
+
 class HelloWorldResSchemaBlockDecoder(DynamicValueDecoder):
     def unmarshal(self, value: ImmutableMsgPackish) -> HelloWorldResConfig:
         assert isinstance(value, dict)
-        return HelloWorldResConfig(foo=value["foo"])
+
+        return HelloWorldResConfig(
+            foo=StringWireTypeUnmarshaler().unmarshal_msgpack(value["foo"])
+        )
+
 
 class ProviderServicer(BaseProviderServicer):
     def GetMetadata(self, request, context):
