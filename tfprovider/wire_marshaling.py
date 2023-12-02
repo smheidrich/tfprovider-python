@@ -12,7 +12,7 @@ W = TypeVar("W", bound=AttributeWireType)
 
 
 class AttributeWireTypeUnmarshaler(ABC, Generic[W]):
-    attribute_wire_type: type[W]
+    attribute_wire_type: W
 
     def unmarshal_msgpack(
         self, value: ImmutableMsgPackish
@@ -21,7 +21,7 @@ class AttributeWireTypeUnmarshaler(ABC, Generic[W]):
 
 
 class StringWireTypeUnmarshaler(AttributeWireTypeUnmarshaler):
-    attribute_wire_type = StringWireType
+    attribute_wire_type = StringWireType()
 
     def unmarshal_msgpack(self, value: ImmutableMsgPackish) -> str:
         if not isinstance(value, str):

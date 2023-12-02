@@ -1,8 +1,12 @@
-from dataclasses import dataclass
 from sys import stderr
 
 from tfprovider.dynamic_value import DynamicValueDecoder
 from tfprovider.rpc_plugin import RPCPluginServer
+from tfprovider.statically_typed_schema import (
+    attribute,
+    attributes_class,
+    attributes_class_to_usable,
+)
 from tfprovider.tfplugin64_pb2 import (
     ConfigureProvider,
     GetMetadata,
@@ -12,30 +16,28 @@ from tfprovider.tfplugin64_pb2 import (
     ValidateResourceConfig,
 )
 from tfprovider.tfplugin64_pb2_grpc import ProviderServicer as BaseProviderServicer
-from tfprovider.usable_schema import (
-    Attribute,
-    Block,
-    ProviderSchema,
-    Schema,
-    StringKind,
-)
-from tfprovider.wire_format import ImmutableMsgPackish, StringWireType
+from tfprovider.usable_schema import Block, ProviderSchema, Schema, StringKind
+from tfprovider.wire_format import ImmutableMsgPackish
 from tfprovider.wire_marshaling import StringWireTypeUnmarshaler
+
+
+@attributes_class()
+class HelloWorldCompleteProviderConfig:
+    foo: str = attribute(required=True)
+
+
+@attributes_class()
+class HelloWorldCompleteResConfig:
+    foo: str = attribute(required=True)
+    # bar: datetime = attribute(representation=DateAsStringRepr())
+
 
 provider_schema = ProviderSchema(
     provider=Schema(
         version=1,
         block=Block(
             version=1,
-            attributes=[
-                Attribute(
-                    name="foo",
-                    type=StringWireType(),
-                    description="Some attribute",
-                    # has no effect here for some reason...
-                    required=True,
-                )
-            ],
+            attributes=attributes_class_to_usable(HelloWorldCompleteProviderConfig),
         ),
     ),
     resource_schemas={
@@ -45,30 +47,18 @@ provider_schema = ProviderSchema(
                 version=1,
                 description="Some resource",
                 description_kind=StringKind.PLAIN,
-                attributes=[
-                    Attribute(
-                        name="foo",
-                        type=StringWireType(),
-                        description="Some attribute in the resource",
-                        required=True,
-                    )
-                ],
+                attributes=attributes_class_to_usable(HelloWorldCompleteResConfig),
             ),
         )
     },
 )
 
 
-@dataclass
-class HelloWorldResConfig:
-    foo: str
-
-
 class HelloWorldResSchemaBlockDecoder(DynamicValueDecoder):
-    def unmarshal(self, value: ImmutableMsgPackish) -> HelloWorldResConfig:
+    def unmarshal(self, value: ImmutableMsgPackish) -> HelloWorldCompleteResConfig:
         assert isinstance(value, dict)
 
-        return HelloWorldResConfig(
+        return HelloWorldCompleteResConfig(
             foo=StringWireTypeUnmarshaler().unmarshal_msgpack(value["foo"])
         )
 
