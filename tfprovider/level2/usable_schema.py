@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 from enum import StrEnum, auto
 from typing import Any, Generic, TypeVar, Union
 
-from . import tfplugin64_pb2 as pb
+from ..level1 import tfplugin64_pb2 as pb
 from .wire_format import AttributeWireType
 
 
@@ -66,7 +66,9 @@ class Block:
             d["description_kind"] = self.description_kind.to_protobuf()
         return pb.Schema.Block(**d)
 
+
 W = TypeVar("W", bound=AttributeWireType)
+
 
 @dataclass
 class Attribute(Generic[W]):

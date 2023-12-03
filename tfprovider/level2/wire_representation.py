@@ -6,10 +6,11 @@ Combined wire type + value marshaling/unmarshaling.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from tfprovider.wire_marshaling import StringWireTypeUnmarshaler
-
 from .wire_format import AttributeWireType, ImmutableMsgPackish, StringWireType
-from .wire_marshaling import AttributeWireTypeUnmarshaler
+from .wire_marshaling import (
+    AttributeWireTypeUnmarshaler,
+    StringWireTypeUnmarshaler,
+)
 
 
 @dataclass

@@ -1,14 +1,7 @@
 from sys import stderr
 
-from tfprovider.dynamic_value import DynamicValueDecoder
-from tfprovider.rpc_plugin import RPCPluginServer
-from tfprovider.statically_typed_schema import (
-    attribute,
-    attributes_class,
-    attributes_class_to_usable,
-    unmarshal_msgpack_into_attributes_class_instance,
-)
-from tfprovider.tfplugin64_pb2 import (
+from tfprovider.level1.rpc_plugin import RPCPluginServer
+from tfprovider.level1.tfplugin64_pb2 import (
     ConfigureProvider,
     GetMetadata,
     PlanResourceChange,
@@ -16,9 +9,18 @@ from tfprovider.tfplugin64_pb2 import (
     ValidateProviderConfig,
     ValidateResourceConfig,
 )
-from tfprovider.tfplugin64_pb2_grpc import ProviderServicer as BaseProviderServicer
-from tfprovider.usable_schema import Block, ProviderSchema, Schema, StringKind
-from tfprovider.wire_format import ImmutableMsgPackish
+from tfprovider.level1.tfplugin64_pb2_grpc import (
+    ProviderServicer as BaseProviderServicer,
+)
+from tfprovider.level2.dynamic_value import DynamicValueDecoder
+from tfprovider.level2.usable_schema import Block, ProviderSchema, Schema, StringKind
+from tfprovider.level2.wire_format import ImmutableMsgPackish
+from tfprovider.level3.statically_typed_schema import (
+    attribute,
+    attributes_class,
+    attributes_class_to_usable,
+    unmarshal_msgpack_into_attributes_class_instance,
+)
 
 
 @attributes_class()

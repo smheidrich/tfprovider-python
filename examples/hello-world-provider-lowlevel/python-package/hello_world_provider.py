@@ -1,5 +1,5 @@
-from tfprovider.rpc_plugin import RPCPluginServer
-from tfprovider.tfplugin64_pb2 import (
+from tfprovider.level1.rpc_plugin import RPCPluginServer
+from tfprovider.level1.tfplugin64_pb2 import (
     GetMetadata,
     GetProviderSchema,
     Schema,
@@ -8,7 +8,7 @@ from tfprovider.tfplugin64_pb2 import (
     ValidateProviderConfig,
     ValidateResourceConfig,
 )
-from tfprovider.tfplugin64_pb2_grpc import ProviderServicer
+from tfprovider.level1.tfplugin64_pb2_grpc import ProviderServicer
 
 
 class ProviderServicer(ProviderServicer):

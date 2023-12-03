@@ -7,16 +7,16 @@ from dataclasses import Field, dataclass, field, fields
 from inspect import get_annotations
 from typing import Any, TypeVar, Union, dataclass_transform
 
-from . import tfplugin64_pb2 as pb
-from .usable_schema import (
+from ..level1 import tfplugin64_pb2 as pb
+from ..level2.usable_schema import (
     NOT_SET,
     Attribute,
     NotSet,
     ProviderSchema,
     StringKind,
 )
-from .wire_format import ImmutableMsgPackish, StringWireType
-from .wire_representation import StringWireRepresentation
+from ..level2.wire_format import ImmutableMsgPackish, StringWireType
+from ..level2.wire_representation import StringWireRepresentation
 
 T = TypeVar("T")
 
