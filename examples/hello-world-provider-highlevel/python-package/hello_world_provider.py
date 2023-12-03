@@ -6,6 +6,7 @@ from tfprovider.statically_typed_schema import (
     attribute,
     attributes_class,
     attributes_class_to_usable,
+    unmarshal_msgpack_into_attributes_class_instance,
 )
 from tfprovider.tfplugin64_pb2 import (
     ConfigureProvider,
@@ -18,7 +19,6 @@ from tfprovider.tfplugin64_pb2 import (
 from tfprovider.tfplugin64_pb2_grpc import ProviderServicer as BaseProviderServicer
 from tfprovider.usable_schema import Block, ProviderSchema, Schema, StringKind
 from tfprovider.wire_format import ImmutableMsgPackish
-from tfprovider.wire_marshaling import StringWireTypeUnmarshaler
 
 
 @attributes_class()
@@ -56,10 +56,8 @@ provider_schema = ProviderSchema(
 
 class HelloWorldResSchemaBlockDecoder(DynamicValueDecoder):
     def unmarshal(self, value: ImmutableMsgPackish) -> HelloWorldCompleteResConfig:
-        assert isinstance(value, dict)
-
-        return HelloWorldCompleteResConfig(
-            foo=StringWireTypeUnmarshaler().unmarshal_msgpack(value["foo"])
+        return unmarshal_msgpack_into_attributes_class_instance(
+            value, HelloWorldCompleteResConfig
         )
 
 

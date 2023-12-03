@@ -7,8 +7,6 @@ from dataclasses import Field, dataclass, field, fields
 from inspect import get_annotations
 from typing import Any, TypeVar, Union, dataclass_transform
 
-from tfprovider.wire_format import StringWireType
-
 from . import tfplugin64_pb2 as pb
 from .usable_schema import (
     NOT_SET,
@@ -17,6 +15,8 @@ from .usable_schema import (
     ProviderSchema,
     StringKind,
 )
+from .wire_format import ImmutableMsgPackish, StringWireType
+from .wire_representation import StringWireRepresentation
 
 T = TypeVar("T")
 
@@ -86,6 +86,8 @@ def attributes_class(*args, **kwargs) -> Callable[[type[T]], type[T]]:
     return _schema
 
 
+ANNOTATION_TO_REPRESENTATION = {str: StringWireRepresentation()}
+
 ANNOTATION_TO_WIRE_TYPE = {
     str: StringWireType(),
 }
@@ -126,6 +128,33 @@ def attributes_class_to_protobuf(klass) -> list[pb.Schema.Attribute]:
     Transform an `@attribute_class`-decorated class to Terraform Protobuf.
     """
     return [a.to_protobuf() for a in attributes_class_to_usable(klass)]
+
+
+# TODO what about json?
+def unmarshal_msgpack_into_attributes_class_instance(
+    marshaled_dict: ImmutableMsgPackish, klass: type[T]
+) -> T:
+    assert isinstance(marshaled_dict, dict)
+    annotations = get_annotations(klass)
+    constructor_kwargs = {}
+    for attr_field in fields(klass):
+        name = attr_field.name
+        marshaled_value = marshaled_dict[name]  # TODO error handling
+        config = attr_field.metadata["tfprovider"]
+        if (representation := config.get("representation")) is not None:
+            unmarshaled_value = representation.unmarshal_value_msgpack(
+                marshaled_value
+            )
+        elif (unmarshaler := config.get("unmarshaler")) is not None:
+            unmarshaled_value = unmarshaler.unmarshal_msgpack(marshaled_value)
+        else:
+            annotation = annotations[name]
+            representation = ANNOTATION_TO_REPRESENTATION[annotation]
+            unmarshaled_value = representation.unmarshal_value_msgpack(
+                marshaled_value
+            )
+        constructor_kwargs[name] = unmarshaled_value
+    return klass(**constructor_kwargs)
 
 
 # TODO later:
