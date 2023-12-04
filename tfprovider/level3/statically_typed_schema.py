@@ -8,6 +8,7 @@ from inspect import get_annotations
 from typing import Any, TypeVar, Union, dataclass_transform
 
 from ..level1 import tfplugin64_pb2 as pb
+from ..level2.dynamic_value import deserialize_dynamic_value
 from ..level2.usable_schema import (
     NOT_SET,
     Attribute,
@@ -130,6 +131,15 @@ def attributes_class_to_protobuf(klass) -> list[pb.Schema.Attribute]:
     return [a.to_protobuf() for a in attributes_class_to_usable(klass)]
 
 
+def deserialize_dynamic_value_into_attribute_class_instance(
+    value: pb.DynamicValue, klass: type[T]
+) -> T:
+    marshaled_value = deserialize_dynamic_value(value)
+    return unmarshal_msgpack_into_attributes_class_instance(
+        marshaled_value, klass
+    )
+
+
 # TODO what about json?
 def unmarshal_msgpack_into_attributes_class_instance(
     marshaled_dict: ImmutableMsgPackish, klass: type[T]
@@ -137,7 +147,9 @@ def unmarshal_msgpack_into_attributes_class_instance(
     assert isinstance(marshaled_dict, dict)
     annotations = get_annotations(klass)
     constructor_kwargs = {}
-    for attr_field in fields(klass):
+    # TODO see https://github.com/python/mypy/issues/14941 for why
+    #   dataclass+type[T] doesn't currently work => typing disabled for now:
+    for attr_field in fields(klass):  # type: ignore
         name = attr_field.name
         marshaled_value = marshaled_dict[name]  # TODO error handling
         config = attr_field.metadata["tfprovider"]

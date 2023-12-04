@@ -12,14 +12,12 @@ from tfprovider.level1.tfplugin64_pb2 import (
 from tfprovider.level1.tfplugin64_pb2_grpc import (
     ProviderServicer as BaseProviderServicer,
 )
-from tfprovider.level2.dynamic_value import DynamicValueDecoder
 from tfprovider.level2.usable_schema import Block, ProviderSchema, Schema, StringKind
-from tfprovider.level2.wire_format import ImmutableMsgPackish
 from tfprovider.level3.statically_typed_schema import (
     attribute,
     attributes_class,
     attributes_class_to_usable,
-    unmarshal_msgpack_into_attributes_class_instance,
+    deserialize_dynamic_value_into_attribute_class_instance,
 )
 
 
@@ -56,13 +54,6 @@ provider_schema = ProviderSchema(
 )
 
 
-class HelloWorldResSchemaBlockDecoder(DynamicValueDecoder):
-    def unmarshal(self, value: ImmutableMsgPackish) -> HelloWorldCompleteResConfig:
-        return unmarshal_msgpack_into_attributes_class_instance(
-            value, HelloWorldCompleteResConfig
-        )
-
-
 class ProviderServicer(BaseProviderServicer):
     def GetMetadata(self, request, context):
         return GetMetadata.Response(
@@ -75,10 +66,9 @@ class ProviderServicer(BaseProviderServicer):
         return provider_schema.to_protobuf()
 
     def ValidateProviderConfig(self, request, context):
-        print(request.config, file=stderr)
-        print(type(request.config.msgpack), file=stderr)
-        decoder = HelloWorldResSchemaBlockDecoder()
-        config = decoder.decode(request.config)
+        config = deserialize_dynamic_value_into_attribute_class_instance(
+            request.config, HelloWorldCompleteProviderConfig
+        )
         foo = config.foo
         print(f"{foo=}", file=stderr)
         return ValidateProviderConfig.Response()
