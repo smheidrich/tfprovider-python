@@ -10,6 +10,7 @@ from .wire_format import AttributeWireType, ImmutableMsgPackish, StringWireType
 from .wire_marshaling import (
     AttributeWireTypeUnmarshaler,
     StringWireTypeUnmarshaler,
+    StringWireTypeMarshaler,
 )
 
 
@@ -20,6 +21,10 @@ class WireRepresentation(ABC):
 
     @abstractmethod
     def unmarshal_value_msgpack(self, value: ImmutableMsgPackish) -> str:
+        pass
+
+    @abstractmethod
+    def marshal_value_msgpack(self, value: str) -> ImmutableMsgPackish:
         pass
 
 
@@ -33,6 +38,12 @@ class StringWireRepresentation(WireRepresentation):
     unmarshaler: StringWireTypeUnmarshaler = field(
         default=StringWireTypeUnmarshaler()
     )
+    marshaler: StringWireTypeMarshaler = field(
+        default=StringWireTypeMarshaler()
+    )
 
     def unmarshal_value_msgpack(self, value: ImmutableMsgPackish) -> str:
         return self.unmarshaler.unmarshal_msgpack(value)
+
+    def marshal_value_msgpack(self, value: str) -> ImmutableMsgPackish:
+        return self.marshaler.marshal_msgpack(value)

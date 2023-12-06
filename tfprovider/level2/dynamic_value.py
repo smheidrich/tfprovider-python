@@ -44,6 +44,8 @@ def deserialize_dynamic_value(value: DynamicValue) -> ImmutableMsgPackish:
     elif (b := value.json) is not None:
         return json.loads(b.decode("utf-8"))
 
+def serialize_to_dynamic_value(value: ImmutableMsgPackish) -> DynamicValue:
+    return DynamicValue(msgpack=msgpack.packb(value))
 
 # TODO find a cleverer solution to this, e.g. ABC for a decoder that decodes to
 #   a user-defined type, which users have to implement

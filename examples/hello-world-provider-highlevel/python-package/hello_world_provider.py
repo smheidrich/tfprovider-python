@@ -1,24 +1,15 @@
 from sys import stderr
+from typing import Any
 
 from tfprovider.level1.rpc_plugin import RPCPluginServer
-from tfprovider.level1.tfplugin64_pb2 import (
-    ConfigureProvider,
-    GetMetadata,
-    PlanResourceChange,
-    ServerCapabilities,
-    ValidateProviderConfig,
-    ValidateResourceConfig,
-)
-from tfprovider.level1.tfplugin64_pb2_grpc import (
-    ProviderServicer as BaseProviderServicer,
-)
 from tfprovider.level2.usable_schema import Block, ProviderSchema, Schema, StringKind
 from tfprovider.level3.statically_typed_schema import (
     attribute,
     attributes_class,
     attributes_class_to_usable,
-    deserialize_dynamic_value_into_attribute_class_instance,
 )
+from tfprovider.level4.provider_servicer import ProviderResource as BaseProviderResource
+from tfprovider.level4.provider_servicer import ProviderServicer as BaseProviderServicer
 
 
 @attributes_class()
@@ -54,37 +45,36 @@ provider_schema = ProviderSchema(
 )
 
 
+class HelloWorldResResource(BaseProviderResource):
+    type_name = "helloworld_res"
+    config_type = HelloWorldCompleteResConfig
+
+    def validate_resource_config(
+        self, config: HelloWorldCompleteResConfig, diagnostics
+    ) -> None:
+        print(f"vrc {config.foo=}", file=stderr)
+
+    def plan_resource_change(
+        self, config: HelloWorldCompleteResConfig, diagnostics: Any
+    ) -> HelloWorldCompleteResConfig:
+        print(f"prc {config.foo=}", file=stderr)
+        return config
+
+
 class ProviderServicer(BaseProviderServicer):
-    def GetMetadata(self, request, context):
-        return GetMetadata.Response(
-            server_capabilities=ServerCapabilities(
-                plan_destroy=False, get_provider_schema_optional=False
-            ),
-        )
+    provider_state = None
+    provider_schema = provider_schema
+    resource_factories = [HelloWorldResResource]
+    config_type = HelloWorldCompleteProviderConfig
 
-    def GetProviderSchema(self, request, context):
-        return provider_schema.to_protobuf()
-
-    def ValidateProviderConfig(self, request, context):
-        config = deserialize_dynamic_value_into_attribute_class_instance(
-            request.config, HelloWorldCompleteProviderConfig
-        )
-        foo = config.foo
-        print(f"{foo=}", file=stderr)
-        return ValidateProviderConfig.Response()
-
-    def ValidateResourceConfig(self, request, context):
-        return ValidateResourceConfig.Response()
-
-    def ConfigureProvider(self, request, context):
-        return ConfigureProvider.Response()
-
-    def PlanResourceChange(self, request, context):
-        return PlanResourceChange.Response(planned_state=request.proposed_new_state)
+    def validate_provider_config(
+        self, config: HelloWorldCompleteProviderConfig, diagnostics
+    ) -> None:
+        print(f"vpc {config.foo=}", file=stderr)
 
 
 def main():
-    s = RPCPluginServer(ProviderServicer())
+    s = RPCPluginServer(ProviderServicer().adapt())
     s.run()
 
 

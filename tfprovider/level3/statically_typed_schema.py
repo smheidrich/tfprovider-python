@@ -8,7 +8,10 @@ from inspect import get_annotations
 from typing import Any, TypeVar, Union, dataclass_transform
 
 from ..level1 import tfplugin64_pb2 as pb
-from ..level2.dynamic_value import deserialize_dynamic_value
+from ..level2.dynamic_value import (
+    deserialize_dynamic_value,
+    serialize_to_dynamic_value,
+)
 from ..level2.usable_schema import (
     NOT_SET,
     Attribute,
@@ -140,6 +143,13 @@ def deserialize_dynamic_value_into_attribute_class_instance(
     )
 
 
+def serialize_attribute_class_instance_to_dynamic_value(
+    instance: T,
+) -> pb.DynamicValue:
+    marshaled_value = marshal_attributes_class_instance_to_msgpack(instance)
+    return serialize_to_dynamic_value(marshaled_value)
+
+
 # TODO what about json?
 def unmarshal_msgpack_into_attributes_class_instance(
     marshaled_dict: ImmutableMsgPackish, klass: type[T]
@@ -167,6 +177,31 @@ def unmarshal_msgpack_into_attributes_class_instance(
             )
         constructor_kwargs[name] = unmarshaled_value
     return klass(**constructor_kwargs)
+
+
+def marshal_attributes_class_instance_to_msgpack(
+    instance: T,
+) -> ImmutableMsgPackish:
+    annotations = get_annotations(instance.__class__)
+    result_dict = {}
+    for attr_field in fields(instance):  # type: ignore
+        name = attr_field.name
+        unmarshaled_value = getattr(instance, name)  # TODO error handling
+        config = attr_field.metadata["tfprovider"]
+        if (representation := config.get("representation")) is not None:
+            marshaled_value = representation.marshal_value_msgpack(
+                unmarshaled_value
+            )
+        elif (marshaler := config.get("marshaler")) is not None:
+            marshaled_value = marshaler.unmarshal_msgpack(unmarshaled_value)
+        else:
+            annotation = annotations[name]
+            representation = ANNOTATION_TO_REPRESENTATION[annotation]
+            marshaled_value = representation.marshal_value_msgpack(
+                unmarshaled_value
+            )
+        result_dict[name] = marshaled_value
+    return result_dict
 
 
 # TODO later:

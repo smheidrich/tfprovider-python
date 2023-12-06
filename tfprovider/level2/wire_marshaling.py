@@ -1,5 +1,5 @@
-from abc import ABC
-from typing import Generic, TypeVar
+from abc import ABC, abstractmethod
+from typing import Any, Generic, TypeVar
 
 from .wire_format import (
     AttributeWireType,
@@ -14,9 +14,18 @@ W = TypeVar("W", bound=AttributeWireType)
 class AttributeWireTypeUnmarshaler(ABC, Generic[W]):
     attribute_wire_type: W
 
+    @abstractmethod
     def unmarshal_msgpack(
         self, value: ImmutableMsgPackish
     ) -> ImmutableJsonishWithUnknown:
+        pass
+
+
+class AttributeWireTypeMarshaler(ABC, Generic[W]):
+    attribute_wire_type: W
+
+    @abstractmethod
+    def marshal_msgpack(self, value: Any) -> ImmutableMsgPackish:  # TODO
         pass
 
 
@@ -24,6 +33,18 @@ class StringWireTypeUnmarshaler(AttributeWireTypeUnmarshaler):
     attribute_wire_type = StringWireType()
 
     def unmarshal_msgpack(self, value: ImmutableMsgPackish) -> str:
+        if not isinstance(value, str):
+            raise TypeError(
+                f"expected string but got {value!r} which is of type "
+                f"{type(value)}"
+            )
+        return value
+
+
+class StringWireTypeMarshaler(AttributeWireTypeMarshaler):
+    attribute_wire_type = StringWireType()
+
+    def marshal_msgpack(self, value: Any) -> ImmutableMsgPackish:
         if not isinstance(value, str):
             raise TypeError(
                 f"expected string but got {value!r} which is of type "
