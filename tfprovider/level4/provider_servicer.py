@@ -12,8 +12,16 @@ from ..level1.tfplugin64_pb2 import (
 from ..level1.tfplugin64_pb2_grpc import (
     ProviderServicer as L1BaseProviderServicer,
 )
-from ..level2.usable_schema import ProviderSchema
+from ..level2.usable_schema import (
+    NOT_SET,
+    Block,
+    NotSet,
+    ProviderSchema,
+    Schema,
+    StringKind,
+)
 from ..level3.statically_typed_schema import (
+    attributes_class_to_usable,
     deserialize_dynamic_value_into_attribute_class_instance,
     serialize_attribute_class_instance_to_dynamic_value,
 )
@@ -88,13 +96,24 @@ RC = TypeVar("RC")  # ResourceConfig
 class ProviderServicer(ABC, Generic[PS, PC, RC]):
     provider_state: PS
     "*Must* be overridden by subclasses."
-    # TODO should not be L2 schema but a new one: ProviderSchema[PC]
-    schema: ProviderSchema
-    "*Must* be overridden by subclasses."
+
     resource_factories: list[type["ProviderResource[PS, RC]"]]
     "*Must* be overridden by subclasses."
     config_type: type[PC]
+    "*Must* be overridden by subclasses."
 
+    # Stuff that goes directly into generating the corresponding TF Schema:
+    # TODO DRY w/r/t ProviderResource? consider introd. common base class
+    schema_version: int
+    "*Must* be overridden by subclasses."
+    block_version: int
+    "*Must* be overridden by subclasses."
+    description: str | NotSet = NOT_SET  # TODO extract from docstring
+    "May be overridden by base classes"
+    description_kind: StringKind | NotSet = NOT_SET
+    "May be overridden by base classes"
+
+    # quasi internal state
     resources: dict[str, "ProviderResource[PS, RC]"]
 
     def __init__(self) -> None:
@@ -122,6 +141,35 @@ class ProviderServicer(ABC, Generic[PS, PC, RC]):
         To be overridden by subclasses if needed.
         """
 
+    # automatically provided, not generally necessary to be overridden:
+
+    # TODO should not be L2 schema but a new one: ProviderSchema[PC]
+    @property
+    def provider_schema(self) -> ProviderSchema:
+        return ProviderSchema(
+            provider=Schema(
+                version=self.schema_version,
+                block=Block(
+                    version=self.block_version,
+                    description=self.description,
+                    description_kind=self.description_kind,
+                    attributes=attributes_class_to_usable(self.config_type),
+                ),
+            ),
+            resource_schemas={
+                res_name: Schema(
+                    version=res.schema_version,
+                    block=Block(
+                        version=res.block_version,
+                        description=res.description,
+                        description_kind=res.description_kind,
+                        attributes=attributes_class_to_usable(res.config_type),
+                    ),
+                )
+                for res_name, res in self.resources.items()
+            },
+        )
+
 
 class ProviderResource(ABC, Generic[PS, RC]):
     type_name: str
@@ -129,6 +177,17 @@ class ProviderResource(ABC, Generic[PS, RC]):
     config_type: type[RC]
     "*Must* be overridden by subclasses."
 
+    # Stuff that goes directly into generating the corresponding TF Schema:
+    schema_version: int
+    "*Must* be overridden by subclasses."
+    block_version: int
+    "*Must* be overridden by subclasses."
+    description: str | NotSet = NOT_SET  # TODO extract from docstring
+    "May be overridden by base classes"
+    description_kind: StringKind | NotSet = NOT_SET
+    "May be overridden by base classes"
+
+    # internal shared state
     provider_state: PS
 
     def __init__(self, provider_state: PS) -> None:
