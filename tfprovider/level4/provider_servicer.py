@@ -88,18 +88,48 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         return resource
 
 
+C = TypeVar("C")  # Provider or Resource config
 PS = TypeVar("PS")  # ProviderState
 PC = TypeVar("PC")  # ProviderConfig
 RC = TypeVar("RC")  # ResourceConfig
 
 
-class ProviderServicer(ABC, Generic[PS, PC, RC]):
+class DefinesSchema(Generic[C]):
+    """
+    Mixin for Terraform schema defining classes (= providers and resources).
+    """
+
+    config_type: type[C]
+    "*Must* be overridden by subclasses."
+
+    # Stuff that goes directly into generating the corresponding TF Schema:
+    schema_version: int
+    "*Must* be overridden by subclasses."
+    block_version: int
+    "*Must* be overridden by subclasses."
+    description: str | NotSet = NOT_SET  # TODO extract from docstring
+    "May be overridden by base classes"
+    description_kind: StringKind | NotSet = NOT_SET
+    "May be overridden by base classes"
+
+    @property
+    def schema(self) -> Schema:
+        return Schema(
+            version=self.schema_version,
+            block=Block(
+                version=self.block_version,
+                description=self.description,
+                description_kind=self.description_kind,
+                attributes=attributes_class_to_usable(self.config_type),
+            ),
+        )
+
+
+class ProviderServicer(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
     provider_state: PS
     "*Must* be overridden by subclasses."
 
     resource_factories: list[type["ProviderResource[PS, RC]"]]
-    "*Must* be overridden by subclasses."
-    config_type: type[PC]
     "*Must* be overridden by subclasses."
 
     # Stuff that goes directly into generating the corresponding TF Schema:
@@ -147,45 +177,17 @@ class ProviderServicer(ABC, Generic[PS, PC, RC]):
     @property
     def provider_schema(self) -> ProviderSchema:
         return ProviderSchema(
-            provider=Schema(
-                version=self.schema_version,
-                block=Block(
-                    version=self.block_version,
-                    description=self.description,
-                    description_kind=self.description_kind,
-                    attributes=attributes_class_to_usable(self.config_type),
-                ),
-            ),
+            provider=self.schema,
             resource_schemas={
-                res_name: Schema(
-                    version=res.schema_version,
-                    block=Block(
-                        version=res.block_version,
-                        description=res.description,
-                        description_kind=res.description_kind,
-                        attributes=attributes_class_to_usable(res.config_type),
-                    ),
-                )
+                res_name: res.schema
                 for res_name, res in self.resources.items()
             },
         )
 
 
-class ProviderResource(ABC, Generic[PS, RC]):
+class ProviderResource(DefinesSchema[RC], ABC, Generic[PS, RC]):
     type_name: str
     "*Must* be overridden by subclasses."
-    config_type: type[RC]
-    "*Must* be overridden by subclasses."
-
-    # Stuff that goes directly into generating the corresponding TF Schema:
-    schema_version: int
-    "*Must* be overridden by subclasses."
-    block_version: int
-    "*Must* be overridden by subclasses."
-    description: str | NotSet = NOT_SET  # TODO extract from docstring
-    "May be overridden by base classes"
-    description_kind: StringKind | NotSet = NOT_SET
-    "May be overridden by base classes"
 
     # internal shared state
     provider_state: PS
