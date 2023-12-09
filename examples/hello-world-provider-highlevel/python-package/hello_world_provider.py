@@ -1,7 +1,6 @@
 from sys import stderr
 from typing import Any
 
-from tfprovider.level1.rpc_plugin import RPCPluginServer
 from tfprovider.level3.statically_typed_schema import attribute, attributes_class
 from tfprovider.level4.provider_servicer import ProviderResource as BaseProviderResource
 from tfprovider.level4.provider_servicer import ProviderServicer as BaseProviderServicer
@@ -52,7 +51,7 @@ class ProviderServicer(BaseProviderServicer):
 
 
 def main():
-    s = RPCPluginServer(ProviderServicer().adapt())
+    s = ProviderServicer()
     s.run()
 
 

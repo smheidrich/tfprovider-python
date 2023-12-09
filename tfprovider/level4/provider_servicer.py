@@ -1,6 +1,8 @@
 from abc import ABC
 from typing import Any, Generic, TypeVar
 
+from tfprovider.level1.rpc_plugin import RPCPluginServer
+
 from ..level1.tfplugin64_pb2 import (
     ConfigureProvider,
     GetMetadata,
@@ -183,6 +185,11 @@ class ProviderServicer(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
                 for res_name, res in self.resources.items()
             },
         )
+
+    # TODO not yet sure whether this is a good idea...
+    def run(self) -> None:
+        s = RPCPluginServer(self.adapt())
+        s.run()
 
 
 class ProviderResource(DefinesSchema[RC], ABC, Generic[PS, RC]):
