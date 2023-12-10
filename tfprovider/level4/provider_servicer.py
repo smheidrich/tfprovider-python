@@ -1,8 +1,10 @@
 from abc import ABC
+from collections.abc import Generator
+from contextlib import contextmanager
+from traceback import format_exc
 from typing import Any, Generic, TypeVar
 
-from tfprovider.level1.rpc_plugin import RPCPluginServer
-
+from ..level1.rpc_plugin import RPCPluginServer
 from ..level1.tfplugin64_pb2 import (
     ConfigureProvider,
     GetMetadata,
@@ -14,6 +16,7 @@ from ..level1.tfplugin64_pb2 import (
 from ..level1.tfplugin64_pb2_grpc import (
     ProviderServicer as L1BaseProviderServicer,
 )
+from ..level2.diagnostics import Diagnostics
 from ..level2.usable_schema import (
     NOT_SET,
     Block,
@@ -27,6 +30,16 @@ from ..level3.statically_typed_schema import (
     deserialize_dynamic_value_into_attribute_class_instance,
     serialize_attribute_class_instance_to_dynamic_value,
 )
+
+
+@contextmanager
+def exception_to_diagnostics(
+    diagnostics: Diagnostics,
+) -> Generator[None, None, None]:
+    try:
+        yield
+    except Exception as e:
+        diagnostics.add_error(summary=str(e), detail=format_exc())
 
 
 class AdapterProviderServicer(L1BaseProviderServicer):
@@ -48,41 +61,49 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         return self.adapted.provider_schema.to_protobuf()
 
     def ValidateProviderConfig(self, request, context):
-        config = deserialize_dynamic_value_into_attribute_class_instance(
-            request.config, self.adapted.config_type
-        )
-        # TODO diag
-        self.adapted.validate_provider_config(config, None)
-        return ValidateProviderConfig.Response()
+        diagnostics = Diagnostics()
+        with exception_to_diagnostics(diagnostics):
+            config = deserialize_dynamic_value_into_attribute_class_instance(
+                request.config, self.adapted.config_type
+            )
+            self.adapted.validate_provider_config(config, diagnostics)
+        return ValidateProviderConfig.Response(diagnostics=diagnostics)
 
     def ValidateResourceConfig(self, request, context):
-        resource = self._get_resource_by_name(request.type_name)
-        config = deserialize_dynamic_value_into_attribute_class_instance(
-            request.config, resource.config_type
-        )
-        resource.validate_resource_config(config, None)  # TODO diag
-        return ValidateResourceConfig.Response()
+        diagnostics = Diagnostics()
+        with exception_to_diagnostics(diagnostics):
+            resource = self._get_resource_by_name(request.type_name)
+            config = deserialize_dynamic_value_into_attribute_class_instance(
+                request.config, resource.config_type
+            )
+            resource.validate_resource_config(config, diagnostics)
+        return ValidateResourceConfig.Response(diagnostics=diagnostics)
 
     def ConfigureProvider(self, request, context):
-        config = deserialize_dynamic_value_into_attribute_class_instance(
-            request.config, self.adapted.config_type
-        )
-        # TODO diag
-        self.adapted.configure_provider(config, None)
-        return ConfigureProvider.Response()
+        diagnostics = []
+        with exception_to_diagnostics(diagnostics):
+            config = deserialize_dynamic_value_into_attribute_class_instance(
+                request.config, self.adapted.config_type
+            )
+            self.adapted.configure_provider(config, diagnostics)
+        return ConfigureProvider.Response(diagnostics=diagnostics)
 
     def PlanResourceChange(self, request, context):
-        resource = self._get_resource_by_name(request.type_name)
-        config = deserialize_dynamic_value_into_attribute_class_instance(
-            request.config, resource.config_type
-        )
-        # TODO prior + proposed new + private + diag
-        planned_state = resource.plan_resource_change(config, None)
-        serialized_planned_state = (
-            serialize_attribute_class_instance_to_dynamic_value(planned_state)
-        )
+        diagnostics = []
+        with exception_to_diagnostics(diagnostics):
+            resource = self._get_resource_by_name(request.type_name)
+            config = deserialize_dynamic_value_into_attribute_class_instance(
+                request.config, resource.config_type
+            )
+            # TODO prior + proposed new + private
+            planned_state = resource.plan_resource_change(config, diagnostics)
+            serialized_planned_state = (
+                serialize_attribute_class_instance_to_dynamic_value(
+                    planned_state
+                )
+            )
         return PlanResourceChange.Response(
-            planned_state=serialized_planned_state
+            planned_state=serialized_planned_state, diagnostics=diagnostics
         )
 
     def _get_resource_by_name(self, type_name: str) -> "ProviderResource":
