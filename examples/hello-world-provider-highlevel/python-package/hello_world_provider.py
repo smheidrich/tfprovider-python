@@ -1,6 +1,6 @@
 from sys import stderr
-from typing import Any
 
+from tfprovider.level2.diagnostics import Diagnostics
 from tfprovider.level3.statically_typed_schema import attribute, attributes_class
 from tfprovider.level4.provider_servicer import ProviderResource as BaseProviderResource
 from tfprovider.level4.provider_servicer import ProviderServicer as BaseProviderServicer
@@ -25,7 +25,7 @@ class HelloWorldResResource(BaseProviderResource):
     block_version = 1
 
     def validate_resource_config(
-        self, config: HelloWorldCompleteResConfig, diagnostics
+        self, config: HelloWorldCompleteResConfig, diagnostics: Diagnostics
     ) -> None:
         print(f"vrc {config.foo=}", file=stderr)
 
@@ -34,7 +34,7 @@ class HelloWorldResResource(BaseProviderResource):
         prior_state: HelloWorldCompleteResConfig | None,
         config: HelloWorldCompleteResConfig,
         proposed_new_state: HelloWorldCompleteResConfig | None,
-        diagnostics: Any,
+        diagnostics: Diagnostics,
     ) -> HelloWorldCompleteResConfig:
         print(f"prc {config.foo=}", file=stderr)
         return config
@@ -49,7 +49,7 @@ class ProviderServicer(BaseProviderServicer):
     block_version = 1
 
     def validate_provider_config(
-        self, config: HelloWorldCompleteProviderConfig, diagnostics
+        self, config: HelloWorldCompleteProviderConfig, diagnostics: Diagnostics
     ) -> None:
         print(f"vpc {config.foo=}", file=stderr)
 

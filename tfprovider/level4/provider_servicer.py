@@ -102,7 +102,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             proposed_new_state = deserialize_dynamic_value_into_optional_attribute_class_instance(
                 request.proposed_new_state, resource.config_type
             )
-            # TODO private
+            # TODO private + requires replace + provider meta
             planned_state = resource.plan_resource_change(
                 prior_state, config, proposed_new_state, diagnostics
             )
