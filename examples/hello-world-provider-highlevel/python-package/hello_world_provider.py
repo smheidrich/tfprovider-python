@@ -30,7 +30,11 @@ class HelloWorldResResource(BaseProviderResource):
         print(f"vrc {config.foo=}", file=stderr)
 
     def plan_resource_change(
-        self, config: HelloWorldCompleteResConfig, diagnostics: Any
+        self,
+        prior_state: HelloWorldCompleteResConfig | None,
+        config: HelloWorldCompleteResConfig,
+        proposed_new_state: HelloWorldCompleteResConfig | None,
+        diagnostics: Any,
     ) -> HelloWorldCompleteResConfig:
         print(f"prc {config.foo=}", file=stderr)
         return config

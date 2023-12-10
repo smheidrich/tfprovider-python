@@ -143,6 +143,17 @@ def deserialize_dynamic_value_into_attribute_class_instance(
     )
 
 
+def deserialize_dynamic_value_into_optional_attribute_class_instance(
+    value: pb.DynamicValue, klass: type[T]
+) -> T | None:
+    marshaled_value = deserialize_dynamic_value(value)
+    if marshaled_value is None:
+        return None
+    return unmarshal_msgpack_into_attributes_class_instance(
+        marshaled_value, klass
+    )
+
+
 def serialize_attribute_class_instance_to_dynamic_value(
     instance: T,
 ) -> pb.DynamicValue:
@@ -154,7 +165,11 @@ def serialize_attribute_class_instance_to_dynamic_value(
 def unmarshal_msgpack_into_attributes_class_instance(
     marshaled_dict: ImmutableMsgPackish, klass: type[T]
 ) -> T:
-    assert isinstance(marshaled_dict, dict)
+    if not isinstance(marshaled_dict, dict):
+        raise TypeError(
+            f"Expected dict but got {type(marshaled_dict).__name__} "
+            f"{marshaled_dict!r}"
+        )
     annotations = get_annotations(klass)
     constructor_kwargs = {}
     # TODO see https://github.com/python/mypy/issues/14941 for why

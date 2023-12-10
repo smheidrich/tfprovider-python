@@ -28,6 +28,7 @@ from ..level2.usable_schema import (
 from ..level3.statically_typed_schema import (
     attributes_class_to_usable,
     deserialize_dynamic_value_into_attribute_class_instance,
+    deserialize_dynamic_value_into_optional_attribute_class_instance,
     serialize_attribute_class_instance_to_dynamic_value,
 )
 
@@ -80,7 +81,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         return ValidateResourceConfig.Response(diagnostics=diagnostics)
 
     def ConfigureProvider(self, request, context):
-        diagnostics = []
+        diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             config = deserialize_dynamic_value_into_attribute_class_instance(
                 request.config, self.adapted.config_type
@@ -89,22 +90,31 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         return ConfigureProvider.Response(diagnostics=diagnostics)
 
     def PlanResourceChange(self, request, context):
-        diagnostics = []
+        diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
+            prior_state = deserialize_dynamic_value_into_optional_attribute_class_instance(
+                request.prior_state, resource.config_type
+            )
             config = deserialize_dynamic_value_into_attribute_class_instance(
                 request.config, resource.config_type
             )
-            # TODO prior + proposed new + private
-            planned_state = resource.plan_resource_change(config, diagnostics)
+            proposed_new_state = deserialize_dynamic_value_into_optional_attribute_class_instance(
+                request.proposed_new_state, resource.config_type
+            )
+            # TODO private
+            planned_state = resource.plan_resource_change(
+                prior_state, config, proposed_new_state, diagnostics
+            )
             serialized_planned_state = (
                 serialize_attribute_class_instance_to_dynamic_value(
                     planned_state
                 )
             )
-        return PlanResourceChange.Response(
-            planned_state=serialized_planned_state, diagnostics=diagnostics
-        )
+            return PlanResourceChange.Response(
+                planned_state=serialized_planned_state, diagnostics=diagnostics
+            )
+        return PlanResourceChange.Response(diagnostics=diagnostics)
 
     def _get_resource_by_name(self, type_name: str) -> "ProviderResource":
         resource = self.adapted.resources[type_name]
@@ -228,7 +238,13 @@ class ProviderResource(DefinesSchema[RC], ABC, Generic[PS, RC]):
         To be overridden by subclasses if needed.
         """
 
-    def plan_resource_change(self, config: RC, diagnostics: Any) -> RC:
+    def plan_resource_change(
+        self,
+        prior_state: RC | None,
+        config: RC,
+        proposed_new_state: RC | None,
+        diagnostics: Any,
+    ) -> RC:
         """
         To be overridden by subclasses if needed.
         """
