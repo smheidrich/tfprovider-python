@@ -11,6 +11,7 @@ from ..level1.tfplugin64_pb2 import (
     GetMetadata,
     PlanResourceChange,
     ServerCapabilities,
+    UpgradeResourceState,
     ValidateProviderConfig,
     ValidateResourceConfig,
 )
@@ -30,6 +31,7 @@ from ..level3.statically_typed_schema import (
     attributes_class_to_usable,
     deserialize_dynamic_value_into_attribute_class_instance,
     deserialize_dynamic_value_into_optional_attribute_class_instance,
+    deserialize_raw_state_into_optional_attribute_class_instance,
     serialize_attribute_class_instance_to_dynamic_value,
 )
 
@@ -141,6 +143,29 @@ class AdapterProviderServicer(L1BaseProviderServicer):
                 new_state=serialized_new_state, diagnostics=diagnostics
             )
         return ApplyResourceChange.Response(diagnostics=diagnostics)
+
+    def UpgradeResourceState(self, request, context):
+        diagnostics = Diagnostics()
+        with exception_to_diagnostics(diagnostics):
+            resource = self._get_resource_by_name(request.type_name)
+            state = (
+                deserialize_raw_state_into_optional_attribute_class_instance(
+                    request.raw_state, resource.config_type
+                )
+            )
+            upgraded_state = resource.upgrade_resource_state(
+                state, request.version, diagnostics
+            )
+            serialized_upgraded_state = (
+                serialize_attribute_class_instance_to_dynamic_value(
+                    upgraded_state
+                )
+            )
+            return UpgradeResourceState.Response(
+                upgraded_state=serialized_upgraded_state,
+                diagnostics=diagnostics,
+            )
+        return UpgradeResourceState.Response(diagnostics=diagnostics)
 
     def _get_resource_by_name(self, type_name: str) -> "ProviderResource":
         resource = self.adapted.resources[type_name]
@@ -283,6 +308,18 @@ class ProviderResource(DefinesSchema[RC], ABC, Generic[PS, RC]):
         config: RC,
         proposed_new_state: RC | None,
         diagnostics: Any,
+    ) -> RC:
+        """
+        To be overridden by subclasses.
+        """
+
+    # TODO considering this is meant to upgrade state from prev. versions, it
+    #   probably doesn't make sense to have the same RC type here as for the
+    #   other methods... => introduce ORC (old resource config) type (w/
+    #   possibility of making it a union)? or just pass the JSON?
+    @abstractmethod
+    def upgrade_resource_state(
+        self, state: RC, version: int, diagnostics: Any
     ) -> RC:
         """
         To be overridden by subclasses.

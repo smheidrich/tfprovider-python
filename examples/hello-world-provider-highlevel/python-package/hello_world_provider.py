@@ -51,6 +51,14 @@ class HelloWorldResResource(BaseProviderResource):
         assert proposed_new_state is not None
         return proposed_new_state
 
+    def upgrade_resource_state(
+        self,
+        state: HelloWorldCompleteResConfig,
+        version: int,
+        diagnostics: Diagnostics,
+    ) -> HelloWorldCompleteResConfig:
+        return state
+
 
 class ProviderServicer(BaseProviderServicer):
     provider_state = None

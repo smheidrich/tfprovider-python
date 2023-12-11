@@ -5,6 +5,7 @@ Helpers for working with schemas that can be statically type checked.
 from collections.abc import Callable
 from dataclasses import Field, dataclass, field, fields
 from inspect import get_annotations
+import json
 from typing import Any, TypeVar, Union, dataclass_transform
 
 from ..level1 import tfplugin64_pb2 as pb
@@ -147,6 +148,18 @@ def deserialize_dynamic_value_into_optional_attribute_class_instance(
     value: pb.DynamicValue, klass: type[T]
 ) -> T | None:
     marshaled_value = deserialize_dynamic_value(value)
+    if marshaled_value is None:
+        return None
+    return unmarshal_msgpack_into_attributes_class_instance(
+        marshaled_value, klass
+    )
+
+
+def deserialize_raw_state_into_optional_attribute_class_instance(
+    value: pb.RawState, klass: type[T]
+) -> T | None:
+    # TODO handle flatmap
+    marshaled_value = json.loads(value.json)  # TODO use/introd. l2 func?
     if marshaled_value is None:
         return None
     return unmarshal_msgpack_into_attributes_class_instance(
