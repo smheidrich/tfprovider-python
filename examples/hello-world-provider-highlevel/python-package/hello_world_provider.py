@@ -2,8 +2,8 @@ from sys import stderr
 
 from tfprovider.level2.diagnostics import Diagnostics
 from tfprovider.level3.statically_typed_schema import attribute, attributes_class
-from tfprovider.level4.provider_servicer import ProviderResource as BaseProviderResource
-from tfprovider.level4.provider_servicer import ProviderServicer as BaseProviderServicer
+from tfprovider.level4.provider_servicer import Provider as BaseProvider
+from tfprovider.level4.provider_servicer import Resource as BaseResource
 
 
 @attributes_class()
@@ -17,7 +17,7 @@ class HelloWorldCompleteResConfig:
     # bar: datetime = attribute(representation=DateAsStringRepr())
 
 
-class HelloWorldResResource(BaseProviderResource):
+class HelloWorldResResource(BaseResource):
     type_name = "helloworld_res"
     config_type = HelloWorldCompleteResConfig
 
@@ -67,7 +67,7 @@ class HelloWorldResResource(BaseProviderResource):
         return current_state
 
 
-class ProviderServicer(BaseProviderServicer):
+class Provider(BaseProvider):
     provider_state = None
     resource_factories = [HelloWorldResResource]
     config_type = HelloWorldCompleteProviderConfig
@@ -82,7 +82,7 @@ class ProviderServicer(BaseProviderServicer):
 
 
 def main():
-    s = ProviderServicer()
+    s = Provider()
     s.run()
 
 

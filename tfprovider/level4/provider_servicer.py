@@ -49,9 +49,9 @@ def exception_to_diagnostics(
 
 
 class AdapterProviderServicer(L1BaseProviderServicer):
-    adapted: "ProviderServicer"
+    adapted: "Provider"
 
-    def __init__(self, adapted: "ProviderServicer"):
+    def __init__(self, adapted: "Provider"):
         self.adapted = adapted
 
     def GetMetadata(self, request, context):
@@ -191,7 +191,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             )
         return ReadResource.Response(diagnostics=diagnostics)
 
-    def _get_resource_by_name(self, type_name: str) -> "ProviderResource":
+    def _get_resource_by_name(self, type_name: str) -> "Resource":
         resource = self.adapted.resources[type_name]
         return resource
 
@@ -233,15 +233,15 @@ class DefinesSchema(Generic[C]):
         )
 
 
-class ProviderServicer(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
+class Provider(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
     provider_state: PS
     "*Must* be overridden by subclasses."
 
-    resource_factories: list[type["ProviderResource[PS, RC]"]]
+    resource_factories: list[type["Resource[PS, RC]"]]
     "*Must* be overridden by subclasses."
 
     # Stuff that goes directly into generating the corresponding TF Schema:
-    # TODO DRY w/r/t ProviderResource? consider introd. common base class
+    # TODO DRY w/r/t Resource? consider introd. common base class
     schema_version: int
     "*Must* be overridden by subclasses."
     block_version: int
@@ -252,7 +252,7 @@ class ProviderServicer(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
     "May be overridden by base classes"
 
     # quasi internal state
-    resources: dict[str, "ProviderResource[PS, RC]"]
+    resources: dict[str, "Resource[PS, RC]"]
 
     def __init__(self) -> None:
         self.resources = {
@@ -298,7 +298,7 @@ class ProviderServicer(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
         s.run()
 
 
-class ProviderResource(DefinesSchema[RC], ABC, Generic[PS, RC]):
+class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
     type_name: str
     "*Must* be overridden by subclasses."
 
