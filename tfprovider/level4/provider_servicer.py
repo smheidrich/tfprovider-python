@@ -240,17 +240,6 @@ class Provider(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
     resource_factories: list[type["Resource[PS, RC]"]]
     "*Must* be overridden by subclasses."
 
-    # Stuff that goes directly into generating the corresponding TF Schema:
-    # TODO DRY w/r/t Resource? consider introd. common base class
-    schema_version: int
-    "*Must* be overridden by subclasses."
-    block_version: int
-    "*Must* be overridden by subclasses."
-    description: str | NotSet = NOT_SET  # TODO extract from docstring
-    "May be overridden by base classes"
-    description_kind: StringKind | NotSet = NOT_SET
-    "May be overridden by base classes"
-
     # quasi internal state
     resources: dict[str, "Resource[PS, RC]"]
 
@@ -264,7 +253,7 @@ class Provider(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
     def adapt(self) -> AdapterProviderServicer:
         return AdapterProviderServicer(self)
 
-    def init(self, diagnostics: Diagnostics) -> None:  # TODO type of diag?
+    def init(self, diagnostics: Diagnostics) -> None:
         """
         To be overridden by subclasses if needed.
         """
