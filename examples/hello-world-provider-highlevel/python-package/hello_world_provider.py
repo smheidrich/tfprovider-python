@@ -37,7 +37,19 @@ class HelloWorldResResource(BaseProviderResource):
         diagnostics: Diagnostics,
     ) -> HelloWorldCompleteResConfig:
         print(f"prc {config.foo=}", file=stderr)
-        return config
+        assert proposed_new_state is not None
+        return proposed_new_state
+
+    def apply_resource_change(
+        self,
+        prior_state: HelloWorldCompleteResConfig | None,
+        config: HelloWorldCompleteResConfig,
+        proposed_new_state: HelloWorldCompleteResConfig | None,
+        diagnostics: Diagnostics,
+    ) -> HelloWorldCompleteResConfig:
+        print(f"arc {config.foo=}", file=stderr)
+        assert proposed_new_state is not None
+        return proposed_new_state
 
 
 class ProviderServicer(BaseProviderServicer):

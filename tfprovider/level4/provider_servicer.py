@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections.abc import Generator
 from contextlib import contextmanager
 from traceback import format_exc
@@ -6,6 +6,7 @@ from typing import Any, Generic, TypeVar
 
 from ..level1.rpc_plugin import RPCPluginServer
 from ..level1.tfplugin64_pb2 import (
+    ApplyResourceChange,
     ConfigureProvider,
     GetMetadata,
     PlanResourceChange,
@@ -115,6 +116,31 @@ class AdapterProviderServicer(L1BaseProviderServicer):
                 planned_state=serialized_planned_state, diagnostics=diagnostics
             )
         return PlanResourceChange.Response(diagnostics=diagnostics)
+
+    def ApplyResourceChange(self, request, context):
+        diagnostics = Diagnostics()
+        with exception_to_diagnostics(diagnostics):
+            resource = self._get_resource_by_name(request.type_name)
+            prior_state = deserialize_dynamic_value_into_optional_attribute_class_instance(
+                request.prior_state, resource.config_type
+            )
+            config = deserialize_dynamic_value_into_attribute_class_instance(
+                request.config, resource.config_type
+            )
+            planned_state = deserialize_dynamic_value_into_optional_attribute_class_instance(
+                request.planned_state, resource.config_type
+            )
+            # TODO private + requires replace + provider meta
+            new_state = resource.apply_resource_change(
+                prior_state, config, planned_state, diagnostics
+            )
+            serialized_new_state = (
+                serialize_attribute_class_instance_to_dynamic_value(new_state)
+            )
+            return ApplyResourceChange.Response(
+                new_state=serialized_new_state, diagnostics=diagnostics
+            )
+        return ApplyResourceChange.Response(diagnostics=diagnostics)
 
     def _get_resource_by_name(self, type_name: str) -> "ProviderResource":
         resource = self.adapted.resources[type_name]
@@ -249,3 +275,15 @@ class ProviderResource(DefinesSchema[RC], ABC, Generic[PS, RC]):
         To be overridden by subclasses if needed.
         """
         return config
+
+    @abstractmethod
+    def apply_resource_change(
+        self,
+        prior_state: RC | None,
+        config: RC,
+        proposed_new_state: RC | None,
+        diagnostics: Any,
+    ) -> RC:
+        """
+        To be overridden by subclasses.
+        """
