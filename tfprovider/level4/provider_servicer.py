@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from contextlib import contextmanager
 from traceback import format_exc
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from ..level1.rpc_plugin import RPCPluginServer
 from ..level1.tfplugin64_pb2 import (
@@ -264,17 +264,19 @@ class Provider(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
     def adapt(self) -> AdapterProviderServicer:
         return AdapterProviderServicer(self)
 
-    def init(self, diagnostics: Any) -> None:  # TODO type of diag?
+    def init(self, diagnostics: Diagnostics) -> None:  # TODO type of diag?
         """
         To be overridden by subclasses if needed.
         """
 
-    def validate_provider_config(self, config: PC, diagnostics: Any) -> None:
+    def validate_provider_config(
+        self, config: PC, diagnostics: Diagnostics
+    ) -> None:
         """
         To be overridden by subclasses if needed.
         """
 
-    def configure_provider(self, config: PC, diagnostics: Any) -> None:
+    def configure_provider(self, config: PC, diagnostics: Diagnostics) -> None:
         """
         To be overridden by subclasses if needed.
         """
