@@ -10,6 +10,7 @@ from ..level1.tfplugin64_pb2 import (
     ConfigureProvider,
     GetMetadata,
     PlanResourceChange,
+    ReadResource,
     ServerCapabilities,
     UpgradeResourceState,
     ValidateProviderConfig,
@@ -167,6 +168,26 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             )
         return UpgradeResourceState.Response(diagnostics=diagnostics)
 
+    def ReadResource(self, request, context):
+        diagnostics = Diagnostics()
+        with exception_to_diagnostics(diagnostics):
+            resource = self._get_resource_by_name(request.type_name)
+            current_state = (
+                deserialize_dynamic_value_into_attribute_class_instance(
+                    request.current_state, resource.config_type
+                )
+            )
+            # TODO private + provider meta
+            new_state = resource.read_resource(current_state, diagnostics)
+            serialized_new_state = (
+                serialize_attribute_class_instance_to_dynamic_value(new_state)
+            )
+            return ReadResource.Response(
+                new_state=serialized_new_state,
+                diagnostics=diagnostics,
+            )
+        return ReadResource.Response(diagnostics=diagnostics)
+
     def _get_resource_by_name(self, type_name: str) -> "ProviderResource":
         resource = self.adapted.resources[type_name]
         return resource
@@ -284,7 +305,9 @@ class ProviderResource(DefinesSchema[RC], ABC, Generic[PS, RC]):
     def __init__(self, provider_state: PS) -> None:
         self.provider_state = provider_state
 
-    def validate_resource_config(self, config: RC, diagnostics: Any) -> None:
+    def validate_resource_config(
+        self, config: RC, diagnostics: Diagnostics
+    ) -> None:
         """
         To be overridden by subclasses if needed.
         """
@@ -294,7 +317,7 @@ class ProviderResource(DefinesSchema[RC], ABC, Generic[PS, RC]):
         prior_state: RC | None,
         config: RC,
         proposed_new_state: RC | None,
-        diagnostics: Any,
+        diagnostics: Diagnostics,
     ) -> RC:
         """
         To be overridden by subclasses if needed.
@@ -307,7 +330,7 @@ class ProviderResource(DefinesSchema[RC], ABC, Generic[PS, RC]):
         prior_state: RC | None,
         config: RC,
         proposed_new_state: RC | None,
-        diagnostics: Any,
+        diagnostics: Diagnostics,
     ) -> RC:
         """
         To be overridden by subclasses.
@@ -319,8 +342,14 @@ class ProviderResource(DefinesSchema[RC], ABC, Generic[PS, RC]):
     #   possibility of making it a union)? or just pass the JSON?
     @abstractmethod
     def upgrade_resource_state(
-        self, state: RC, version: int, diagnostics: Any
+        self, state: RC, version: int, diagnostics: Diagnostics
     ) -> RC:
+        """
+        To be overridden by subclasses.
+        """
+
+    @abstractmethod
+    def read_resource(self, current_state: RC, diagnostics: Diagnostics) -> RC:
         """
         To be overridden by subclasses.
         """

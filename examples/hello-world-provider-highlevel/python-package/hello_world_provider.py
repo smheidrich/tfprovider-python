@@ -59,6 +59,11 @@ class HelloWorldResResource(BaseProviderResource):
     ) -> HelloWorldCompleteResConfig:
         return state
 
+    def read_resource(
+        self, current_state: HelloWorldCompleteResConfig, diagnostics: Diagnostics
+    ) -> HelloWorldCompleteResConfig:
+        return current_state
+
 
 class ProviderServicer(BaseProviderServicer):
     provider_state = None
