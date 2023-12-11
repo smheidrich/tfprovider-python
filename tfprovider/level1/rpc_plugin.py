@@ -4,21 +4,28 @@ Implementation of the Terraform variant of the RPCPlugin spec.
 import datetime
 import os
 from base64 import b64encode
+from collections.abc import Callable
 from concurrent import futures
 from sys import stderr
 
 import grpc
+import grpc.aio
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 from . import grpc_controller_pb2_grpc, tfplugin64_pb2_grpc
-from .controller_servicer import ControllerServicer
+from .controller_servicer import AsyncControllerServicer, ControllerServicer
 from .health_servicer import _configure_health_server
 
 
-class RPCPluginServer:
+class RPCPluginServerBase:
+    _server_factory: Callable
+    "*Must* be set by subclasses."
+    _controller_servicer_factory: Callable
+    "*Must* be set by subclasses."
+
     def __init__(
         self,
         provider_servicer: tfplugin64_pb2_grpc.ProviderServicer,
@@ -27,9 +34,11 @@ class RPCPluginServer:
         self.port = port
         self.cert, self.key = generate_server_cert()
         self.cert_base64 = encode_cert_base64(self.cert)
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        server = self.__class__._server_factory(
+            futures.ThreadPoolExecutor(max_workers=10)
+        )
         grpc_controller_pb2_grpc.add_GRPCControllerServicer_to_server(
-            ControllerServicer(server), server
+            self.__class__._controller_servicer_factory(server), server
         )
         tfplugin64_pb2_grpc.add_ProviderServicer_to_server(
             provider_servicer, server
@@ -47,6 +56,11 @@ class RPCPluginServer:
         _configure_health_server(server)
         self.server = server
 
+
+class RPCPluginServer(RPCPluginServerBase):
+    _server_factory = grpc.server
+    _controller_servicer_factory = ControllerServicer
+
     def run(self):
         parent_pid = os.getppid()
         self.server.start()
@@ -59,6 +73,26 @@ class RPCPluginServer:
         # way to detect this is to see if the parent PID has changed:
         while os.getppid() == parent_pid:
             if not self.server.wait_for_termination(1):
+                break
+
+
+class AsyncRPCPluginServer(RPCPluginServerBase):
+    _server_factory = grpc.aio.server
+    _controller_servicer_factory = AsyncControllerServicer
+
+    # TODO make DRYer w/r/t ^
+    async def run(self):
+        parent_pid = os.getppid()
+        await self.server.start()
+        print(f"server listening on port {self.port}", file=stderr)
+        print_handshake_response(self.port, self.cert_base64)
+        # RPCPlugin clients stop plugins with SIGKILL, which kills a process
+        # immediately but leaves its children intact. Python RPCPlugin servers
+        # will generally be launched by a bash script, so SIGKILL will only
+        # kill that script's process but not the Python interpreter. A simple
+        # way to detect this is to see if the parent PID has changed:
+        while os.getppid() == parent_pid:
+            if not await self.server.wait_for_termination(1):
                 break
 
 

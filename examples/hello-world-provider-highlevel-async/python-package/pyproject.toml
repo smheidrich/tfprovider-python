@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "hello-world-provider"
+version = "0.1.0"
+description = "Example Terraform provider using the tfprovider Python library"
+authors = ["Example Author <author@example.net>"]
+readme = "README.md"
+
+[tool.poetry.scripts]
+hello-world-provider = 'hello_world_provider:main'
+
+[tool.poetry.dependencies]
+python = "^3.11"
+tfprovider = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0,<2"]
+build-backend = "poetry.core.masonry.api"

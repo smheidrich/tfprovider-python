@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
-from ..level1.rpc_plugin import RPCPluginServer
+from ..level1.rpc_plugin import AsyncRPCPluginServer
 from ..level1.tfplugin64_pb2 import (
     ApplyResourceChange,
     ConfigureProvider,
@@ -33,7 +33,9 @@ from ..level3.statically_typed_schema import (
     serialize_attribute_class_instance_to_dynamic_value,
     serialize_optional_attribute_class_instance_to_dynamic_value,
 )
-from .utils import exception_to_diagnostics
+from .provider_servicer import exception_to_diagnostics
+
+# TODO refactor: DRY w/r/t sync variant
 
 
 class AdapterProviderServicer(L1BaseProviderServicer):
@@ -42,47 +44,47 @@ class AdapterProviderServicer(L1BaseProviderServicer):
     def __init__(self, adapted: "Provider"):
         self.adapted = adapted
 
-    def GetMetadata(self, request, context):
-        self.adapted.init()
+    async def GetMetadata(self, request, context):
+        await self.adapted.init()
         return GetMetadata.Response(
             server_capabilities=ServerCapabilities(
                 plan_destroy=False, get_provider_schema_optional=False
             ),
         )
 
-    def GetProviderSchema(self, request, context):
+    async def GetProviderSchema(self, request, context):
         # TODO also init() here if getmetadata wasnt called
         return self.adapted.provider_schema.to_protobuf()
 
-    def ValidateProviderConfig(self, request, context):
+    async def ValidateProviderConfig(self, request, context):
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             config = deserialize_dynamic_value_into_attribute_class_instance(
                 request.config, self.adapted.config_type
             )
-            self.adapted.validate_provider_config(config, diagnostics)
+            await self.adapted.validate_provider_config(config, diagnostics)
         return ValidateProviderConfig.Response(diagnostics=diagnostics)
 
-    def ValidateResourceConfig(self, request, context):
+    async def ValidateResourceConfig(self, request, context):
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
             config = deserialize_dynamic_value_into_attribute_class_instance(
                 request.config, resource.config_type
             )
-            resource.validate_resource_config(config, diagnostics)
+            await resource.validate_resource_config(config, diagnostics)
         return ValidateResourceConfig.Response(diagnostics=diagnostics)
 
-    def ConfigureProvider(self, request, context):
+    async def ConfigureProvider(self, request, context):
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             config = deserialize_dynamic_value_into_attribute_class_instance(
                 request.config, self.adapted.config_type
             )
-            self.adapted.configure_provider(config, diagnostics)
+            await self.adapted.configure_provider(config, diagnostics)
         return ConfigureProvider.Response(diagnostics=diagnostics)
 
-    def PlanResourceChange(self, request, context):
+    async def PlanResourceChange(self, request, context):
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
@@ -96,7 +98,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
                 request.proposed_new_state, resource.config_type
             )
             # TODO private + requires replace + provider meta
-            planned_state = resource.plan_resource_change(
+            planned_state = await resource.plan_resource_change(
                 prior_state, config, proposed_new_state, diagnostics
             )
             serialized_planned_state = (
@@ -109,7 +111,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             )
         return PlanResourceChange.Response(diagnostics=diagnostics)
 
-    def ApplyResourceChange(self, request, context):
+    async def ApplyResourceChange(self, request, context):
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
@@ -123,7 +125,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
                 request.planned_state, resource.config_type
             )
             # TODO private + requires replace + provider meta
-            new_state = resource.apply_resource_change(
+            new_state = await resource.apply_resource_change(
                 prior_state, config, planned_state, diagnostics
             )
             serialized_new_state = (
@@ -136,7 +138,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             )
         return ApplyResourceChange.Response(diagnostics=diagnostics)
 
-    def UpgradeResourceState(self, request, context):
+    async def UpgradeResourceState(self, request, context):
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
@@ -145,7 +147,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
                     request.raw_state, resource.config_type
                 )
             )
-            upgraded_state = resource.upgrade_resource_state(
+            upgraded_state = await resource.upgrade_resource_state(
                 state, request.version, diagnostics
             )
             serialized_upgraded_state = (
@@ -159,7 +161,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             )
         return UpgradeResourceState.Response(diagnostics=diagnostics)
 
-    def ReadResource(self, request, context):
+    async def ReadResource(self, request, context):
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
@@ -169,7 +171,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
                 )
             )
             # TODO private + provider meta
-            new_state = resource.read_resource(current_state, diagnostics)
+            new_state = await resource.read_resource(
+                current_state, diagnostics
+            )
             serialized_new_state = (
                 serialize_attribute_class_instance_to_dynamic_value(new_state)
             )
@@ -241,19 +245,21 @@ class Provider(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
     def adapt(self) -> AdapterProviderServicer:
         return AdapterProviderServicer(self)
 
-    def init(self, diagnostics: Diagnostics) -> None:
+    async def init(self, diagnostics: Diagnostics) -> None:
         """
         To be overridden by subclasses if needed.
         """
 
-    def validate_provider_config(
+    async def validate_provider_config(
         self, config: PC, diagnostics: Diagnostics
     ) -> None:
         """
         To be overridden by subclasses if needed.
         """
 
-    def configure_provider(self, config: PC, diagnostics: Diagnostics) -> None:
+    async def configure_provider(
+        self, config: PC, diagnostics: Diagnostics
+    ) -> None:
         """
         To be overridden by subclasses if needed.
         """
@@ -272,9 +278,9 @@ class Provider(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
         )
 
     # TODO not yet sure whether this is a good idea...
-    def run(self) -> None:
-        s = RPCPluginServer(self.adapt())
-        s.run()
+    async def run(self) -> None:
+        s = AsyncRPCPluginServer(self.adapt())
+        await s.run()
 
 
 class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
