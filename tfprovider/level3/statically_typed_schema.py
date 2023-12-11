@@ -2,10 +2,10 @@
 Helpers for working with schemas that can be statically type checked.
 """
 
+import json
 from collections.abc import Callable
 from dataclasses import Field, dataclass, field, fields
 from inspect import get_annotations
-import json
 from typing import Any, TypeVar, Union, dataclass_transform
 
 from ..level1 import tfplugin64_pb2 as pb
@@ -171,6 +171,17 @@ def serialize_attribute_class_instance_to_dynamic_value(
     instance: T,
 ) -> pb.DynamicValue:
     marshaled_value = marshal_attributes_class_instance_to_msgpack(instance)
+    return serialize_to_dynamic_value(marshaled_value)
+
+
+def serialize_optional_attribute_class_instance_to_dynamic_value(
+    instance: T | None,
+) -> pb.DynamicValue:
+    marshaled_value = (
+        marshal_attributes_class_instance_to_msgpack(instance)
+        if instance is not None
+        else None
+    )
     return serialize_to_dynamic_value(marshaled_value)
 
 

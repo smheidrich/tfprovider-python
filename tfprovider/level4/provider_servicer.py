@@ -34,6 +34,7 @@ from ..level3.statically_typed_schema import (
     deserialize_dynamic_value_into_optional_attribute_class_instance,
     deserialize_raw_state_into_optional_attribute_class_instance,
     serialize_attribute_class_instance_to_dynamic_value,
+    serialize_optional_attribute_class_instance_to_dynamic_value,
 )
 
 
@@ -127,7 +128,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             prior_state = deserialize_dynamic_value_into_optional_attribute_class_instance(
                 request.prior_state, resource.config_type
             )
-            config = deserialize_dynamic_value_into_attribute_class_instance(
+            config = deserialize_dynamic_value_into_optional_attribute_class_instance(
                 request.config, resource.config_type
             )
             planned_state = deserialize_dynamic_value_into_optional_attribute_class_instance(
@@ -138,7 +139,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
                 prior_state, config, planned_state, diagnostics
             )
             serialized_new_state = (
-                serialize_attribute_class_instance_to_dynamic_value(new_state)
+                serialize_optional_attribute_class_instance_to_dynamic_value(
+                    new_state
+                )
             )
             return ApplyResourceChange.Response(
                 new_state=serialized_new_state, diagnostics=diagnostics
@@ -328,10 +331,10 @@ class ProviderResource(DefinesSchema[RC], ABC, Generic[PS, RC]):
     def apply_resource_change(
         self,
         prior_state: RC | None,
-        config: RC,
+        config: RC | None,
         proposed_new_state: RC | None,
         diagnostics: Diagnostics,
-    ) -> RC:
+    ) -> RC | None:
         """
         To be overridden by subclasses.
         """

@@ -43,12 +43,14 @@ class HelloWorldResResource(BaseProviderResource):
     def apply_resource_change(
         self,
         prior_state: HelloWorldCompleteResConfig | None,
-        config: HelloWorldCompleteResConfig,
+        config: HelloWorldCompleteResConfig | None,
         proposed_new_state: HelloWorldCompleteResConfig | None,
         diagnostics: Diagnostics,
-    ) -> HelloWorldCompleteResConfig:
-        print(f"arc {config.foo=}", file=stderr)
-        assert proposed_new_state is not None
+    ) -> HelloWorldCompleteResConfig | None:
+        if config is not None:
+            print(f"arc {config.foo=}", file=stderr)
+        else:
+            print("DESTROY", file=stderr)
         return proposed_new_state
 
     def upgrade_resource_state(
