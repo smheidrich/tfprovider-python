@@ -4,8 +4,10 @@ from threading import Thread
 
 from . import grpc_controller_pb2, grpc_controller_pb2_grpc
 
+# TODO move to _async and generate sync variant via unasync; only need
+#   manual distinction for how to create a daemon task (thread vs async)
 
-class ControllerServicer(grpc_controller_pb2_grpc.GRPCControllerServicer):
+class SyncControllerServicer(grpc_controller_pb2_grpc.GRPCControllerServicer):
     def __init__(self, server):
         self.server = server
         self.stop_thread = Thread(target=self._stop_server, daemon=True)

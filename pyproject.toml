@@ -23,13 +23,10 @@ flake8 = "^6.0.0"
 isort = "^5.12.0"
 pytest-parametrization = "^2022.2.1"
 black = "^23.7.0"
-
-#[tool.poetry.group.doc.dependencies]
-#sphinx = "^7.1.2"
-#insipid-sphinx-theme = "^0.4.1"
 types-protobuf = "^4.24.0.4"
 msgpack-types = "^0.2.0"
 grpc-stubs = "^1.53.0.3"
+unasync = "^0.5.0"
 
 [tool.black]
 line-length = 79
