@@ -21,7 +21,10 @@ from ..level2.usable_schema import (
     StringKind,
 )
 from ..level2.wire_format import ImmutableMsgPackish, StringWireType
-from ..level2.wire_representation import StringWireRepresentation
+from ..level2.wire_representation import (
+    OptionalWireRepresentation,
+    StringWireRepresentation,
+)
 
 T = TypeVar("T")
 
@@ -91,10 +94,16 @@ def attributes_class(*args, **kwargs) -> Callable[[type[T]], type[T]]:
     return _schema
 
 
-ANNOTATION_TO_REPRESENTATION = {str: StringWireRepresentation()}
+ANNOTATION_TO_REPRESENTATION = {
+    str: StringWireRepresentation(),
+    # TODO make this happen automatically
+    (str | None): OptionalWireRepresentation(StringWireRepresentation()),
+}
 
 ANNOTATION_TO_WIRE_TYPE = {
     str: StringWireType(),
+    # TODO make this happen automatically
+    (str | None): StringWireType(),
 }
 
 

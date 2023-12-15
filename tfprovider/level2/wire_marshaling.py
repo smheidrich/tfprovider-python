@@ -53,6 +53,28 @@ class StringWireTypeMarshaler(AttributeWireTypeMarshaler):
         return value
 
 
+class OptionalWireTypeUnmarshaler(AttributeWireTypeUnmarshaler):
+    def __init__(self, inner: AttributeWireTypeUnmarshaler):
+        self.inner = inner
+        self.attribute_wire_type = inner.attribute_wire_type
+
+    def unmarshal_msgpack(
+        self, value: ImmutableMsgPackish
+    ) -> ImmutableJsonishWithUnknown:
+        return (
+            self.inner.unmarshal_msgpack(value) if value is not None else None
+        )
+
+
+class OptionalWireTypeMarshaler(AttributeWireTypeMarshaler):
+    def __init__(self, inner: AttributeWireTypeMarshaler):
+        self.inner = inner
+        self.attribute_wire_type = inner.attribute_wire_type
+
+    def marshal_msgpack(self, value: Any) -> ImmutableMsgPackish:
+        return self.inner.marshal_msgpack(value) if value is not None else None
+
+
 #### ye olde #####
 
 
