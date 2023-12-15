@@ -20,14 +20,14 @@ class ElementKey(AttributePathElement):
 
 
 class AttributePath:
-    def __init__(self, from_: Iterable[Self]):
+    def __init__(self, from_: Iterable[AttributePathElement]):
         self._elements = tuple(from_)
 
     def attribute_name(self, name: str, /) -> Self:
-        return AttributePath(self._elements + (AttributeName(name),))
+        return self.__class__(self._elements + (AttributeName(name),))
 
     def element_key(self, key: str | int, /) -> Self:
-        return AttributePath(self._elements + (ElementKey(key),))
+        return self.__class__(self._elements + (ElementKey(key),))
 
     def to_protobuf(self) -> pb.AttributePath:
         steps = []
