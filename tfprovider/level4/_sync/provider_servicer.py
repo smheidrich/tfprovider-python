@@ -7,6 +7,8 @@ from ...level1.tfplugin64_pb2 import (
     ApplyResourceChange,
     ConfigureProvider,
     GetMetadata,
+    GetProviderSchema,
+    ImportResourceState,
     PlanResourceChange,
     ReadResource,
     ServerCapabilities,
@@ -53,8 +55,10 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         )
 
     def GetProviderSchema(self, request, context):
-        # TODO also init() here if getmetadata wasnt called
-        return self.adapted.provider_schema.to_protobuf()
+        diagnostics = Diagnostics()
+        with exception_to_diagnostics(diagnostics):
+            return self.adapted.provider_schema.to_protobuf()
+        return GetProviderSchema.Response(diagnostics=diagnostics)
 
     def ValidateProviderConfig(self, request, context):
         diagnostics = Diagnostics()
@@ -198,6 +202,31 @@ class AdapterProviderServicer(L1BaseProviderServicer):
                 diagnostics=diagnostics,
             )
         return ReadResource.Response(diagnostics=diagnostics)
+
+    def ImportResourceState(self, request, context):
+        diagnostics = Diagnostics()
+        with exception_to_diagnostics(diagnostics):
+            resource = self._get_resource_by_name(request.type_name)
+            # TODO come up w/ way to allow importing multiple resources
+            # TODO handle private
+            imported_resource_config = resource.import_resource(
+                request.id, diagnostics
+            )
+            serialized_resource_state = (
+                serialize_attribute_class_instance_to_dynamic_value(
+                    imported_resource_config
+                )
+            )
+            return ImportResourceState.Response(
+                imported_resources=[
+                    ImportResourceState.ImportedResource(
+                        type_name=request.type_name,
+                        state=serialized_resource_state,
+                    )
+                ],
+                diagnostics=diagnostics,
+            )
+        return ImportResourceState.Response(diagnostics=diagnostics)
 
     def _get_resource_by_name(self, type_name: str) -> "Resource":
         resource = self.adapted.resources[type_name]
@@ -359,6 +388,12 @@ class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
     def read_resource(
         self, current_state: RC, diagnostics: Diagnostics
     ) -> RC | None:
+        """
+        To be overridden by subclasses.
+        """
+
+    @abstractmethod
+    def import_resource(self, id: str, diagnostics: Diagnostics) -> RC:
         """
         To be overridden by subclasses.
         """

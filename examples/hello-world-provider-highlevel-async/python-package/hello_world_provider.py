@@ -67,6 +67,11 @@ class HelloWorldResResource(BaseResource):
     ) -> HelloWorldCompleteResConfig:
         return current_state
 
+    async def import_resource(
+        self, id: str, diagnostics: Diagnostics
+    ) -> HelloWorldCompleteResConfig:
+        raise NotImplementedError("resource imports not yet implemented")
+
 
 class Provider(BaseProvider):
     provider_state = None
