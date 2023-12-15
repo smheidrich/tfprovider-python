@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from collections.abc import Sequence
+from typing import Generic, TypeAlias, TypeVar
 
 from ...level1.rpc_plugin import AsyncRPCPluginServer
 from ...level1.tfplugin64_pb2 import (
@@ -16,6 +17,7 @@ from ...level1.tfplugin64_pb2 import (
 from ...level1.tfplugin64_pb2_grpc import (
     ProviderServicer as L1BaseProviderServicer,
 )
+from ...level2.attribute_path import AttributePath
 from ...level2.diagnostics import Diagnostics
 from ...level2.usable_schema import (
     NOT_SET,
@@ -95,17 +97,31 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             proposed_new_state = deserialize_dynamic_value_into_optional_attribute_class_instance(
                 request.proposed_new_state, resource.config_type
             )
-            # TODO private + requires replace + provider meta
-            planned_state = await resource.plan_resource_change(
+            # TODO private + provider meta
+            inner_response = await resource.plan_resource_change(
                 prior_state, config, proposed_new_state, diagnostics
             )
+            if isinstance(inner_response, tuple):
+                planned_state, requires_replace = inner_response
+            else:
+                planned_state, requires_replace = inner_response, None
             serialized_planned_state = (
                 serialize_attribute_class_instance_to_dynamic_value(
                     planned_state
                 )
             )
             return PlanResourceChange.Response(
-                planned_state=serialized_planned_state, diagnostics=diagnostics
+                planned_state=serialized_planned_state,
+                diagnostics=diagnostics,
+                **(
+                    {
+                        "requires_replace": [
+                            path.to_protobuf() for path in requires_replace
+                        ]
+                    }
+                    if requires_replace is not None
+                    else {}
+                )
             )
         return PlanResourceChange.Response(diagnostics=diagnostics)
 
@@ -173,7 +189,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
                 current_state, diagnostics
             )
             serialized_new_state = (
-                serialize_attribute_class_instance_to_dynamic_value(new_state)
+                serialize_optional_attribute_class_instance_to_dynamic_value(
+                    new_state
+                )
             )
             return ReadResource.Response(
                 new_state=serialized_new_state,
@@ -281,6 +299,9 @@ class Provider(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
         await s.run()
 
 
+PlanResourceChangeResponse: TypeAlias = RC | tuple[RC, Sequence[AttributePath]]
+
+
 class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
     type_name: str
     "*Must* be overridden by subclasses."
@@ -304,7 +325,7 @@ class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
         config: RC,
         proposed_new_state: RC | None,
         diagnostics: Diagnostics,
-    ) -> RC:
+    ) -> PlanResourceChangeResponse[RC]:
         """
         To be overridden by subclasses if needed.
         """
@@ -335,7 +356,9 @@ class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
         """
 
     @abstractmethod
-    def read_resource(self, current_state: RC, diagnostics: Diagnostics) -> RC:
+    def read_resource(
+        self, current_state: RC, diagnostics: Diagnostics
+    ) -> RC | None:
         """
         To be overridden by subclasses.
         """
