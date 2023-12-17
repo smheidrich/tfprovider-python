@@ -15,6 +15,7 @@ grpcio = "^1.59.0"
 grpcio-health-checking = "^1.59.0"
 cryptography = "^41.0.4"
 msgpack = "^1.0.7"
+tfplugin-proto-all = "^0.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.3.1"

@@ -8,7 +8,8 @@ from dataclasses import Field, dataclass, field, fields
 from inspect import get_annotations
 from typing import Any, TypeVar, Union, dataclass_transform
 
-from ..level1 import tfplugin64_pb2 as pb
+from tfplugin_proto import tfplugin6_4_pb2 as pb
+
 from ..level2.dynamic_value import (
     deserialize_dynamic_value,
     serialize_to_dynamic_value,

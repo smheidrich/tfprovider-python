@@ -5,7 +5,7 @@ from typing import Any, Generic, TypeVar
 
 import msgpack
 
-from ..level1.tfplugin64_pb2 import DynamicValue
+from tfplugin_proto.tfplugin6_4_pb2 import DynamicValue
 
 from .usable_schema import NOT_SET, Attribute, Block
 from .wire_format import ImmutableMsgPackish

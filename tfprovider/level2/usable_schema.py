@@ -9,7 +9,8 @@ from dataclasses import asdict, dataclass
 from enum import StrEnum, auto
 from typing import Any, Generic, TypeVar, Union
 
-from ..level1 import tfplugin64_pb2 as pb
+from tfplugin_proto import tfplugin6_4_pb2 as pb
+
 from .wire_format import AttributeWireType
 
 

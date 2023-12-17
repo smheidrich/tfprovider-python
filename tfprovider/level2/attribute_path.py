@@ -2,7 +2,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Self
 
-from ..level1 import tfplugin64_pb2 as pb
+from tfplugin_proto import tfplugin6_4_pb2 as pb
 
 
 class AttributePathElement:

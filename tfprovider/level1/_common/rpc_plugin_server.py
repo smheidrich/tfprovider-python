@@ -12,8 +12,9 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
+from tfplugin_proto import tfplugin6_4_pb2_grpc
 
-from .. import grpc_controller_pb2_grpc, tfplugin64_pb2_grpc
+from .. import grpc_controller_pb2_grpc
 from ..health_servicer import _configure_health_server
 
 
@@ -25,7 +26,7 @@ class RPCPluginServerBase:
 
     def __init__(
         self,
-        provider_servicer: tfplugin64_pb2_grpc.ProviderServicer,
+        provider_servicer: tfplugin6_4_pb2_grpc.ProviderServicer,
         port: str = "1234",
     ):
         self.port = port
@@ -37,7 +38,7 @@ class RPCPluginServerBase:
         grpc_controller_pb2_grpc.add_GRPCControllerServicer_to_server(
             self.__class__._controller_servicer_factory(server), server
         )
-        tfplugin64_pb2_grpc.add_ProviderServicer_to_server(
+        tfplugin6_4_pb2_grpc.add_ProviderServicer_to_server(
             provider_servicer, server
         )
         key_cert_pair_for_grpc = (

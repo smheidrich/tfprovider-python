@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import Generic, TypeAlias, TypeVar
 
 from ...level1.rpc_plugin import SyncRPCPluginServer
-from ...level1.tfplugin64_pb2 import (
+from tfplugin_proto.tfplugin6_4_pb2 import (
     ApplyResourceChange,
     ConfigureProvider,
     GetMetadata,
@@ -16,7 +16,7 @@ from ...level1.tfplugin64_pb2 import (
     ValidateProviderConfig,
     ValidateResourceConfig,
 )
-from ...level1.tfplugin64_pb2_grpc import (
+from tfplugin_proto.tfplugin6_4_pb2_grpc import (
     ProviderServicer as L1BaseProviderServicer,
 )
 from ...level2.attribute_path import AttributePath
