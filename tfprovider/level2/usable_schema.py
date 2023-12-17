@@ -53,7 +53,7 @@ class Schema:
 @dataclass
 class Block:
     version: int | NotSet = NOT_SET
-    attributes: list["Attribute"] | NotSet = NOT_SET
+    attributes: list["Attribute[Any]"] | NotSet = NOT_SET
     # block_types  # TODO
     description: str | NotSet = NOT_SET
     description_kind: Union["StringKind", NotSet] = NOT_SET
@@ -68,7 +68,7 @@ class Block:
         return pb.Schema.Block(**d)
 
 
-W = TypeVar("W", bound=AttributeWireType)
+W = TypeVar("W", bound=AttributeWireType[Any])
 
 
 @dataclass

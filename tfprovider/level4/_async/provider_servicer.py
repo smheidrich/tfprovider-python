@@ -42,9 +42,9 @@ from ..utils import exception_to_diagnostics
 
 
 class AdapterProviderServicer(L1BaseProviderServicer):
-    adapted: "Provider"
+    adapted: "Provider[Any, Any]"
 
-    def __init__(self, adapted: "Provider") -> None:
+    def __init__(self, adapted: "Provider[Any, Any]") -> None:
         self.adapted = adapted
 
     async def GetMetadata(
@@ -250,7 +250,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             )
         return ImportResourceState.Response(diagnostics=diagnostics)
 
-    def _get_resource_by_name(self, type_name: str) -> "Resource":
+    def _get_resource_by_name(self, type_name: str) -> "Resource[Any, Any]":
         resource = self.adapted.resources[type_name]
         return resource
 
@@ -292,15 +292,15 @@ class DefinesSchema(Generic[C]):
         )
 
 
-class Provider(DefinesSchema[PC], ABC, Generic[PS, PC, RC]):
+class Provider(DefinesSchema[PC], ABC, Generic[PS, PC]):
     provider_state: PS
     "*Must* be overridden by subclasses."
 
-    resource_factories: list[type["Resource[PS, RC]"]]
+    resource_factories: list[type["Resource[PS, Any]"]]
     "*Must* be overridden by subclasses."
 
     # quasi internal state
-    resources: dict[str, "Resource[PS, RC]"]
+    resources: dict[str, "Resource[PS, Any]"]
 
     def __init__(self) -> None:
         self.resources = {

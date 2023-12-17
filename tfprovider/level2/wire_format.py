@@ -55,7 +55,8 @@ T = TypeVar("T")
 
 # types
 
-M = TypeVar("M", bound=ImmutableJsonish)
+M = TypeVar("M", bound=ImmutableMsgPackish, covariant=True)
+
 
 class AttributeWireType(ABC, Generic[M]):
 
@@ -81,48 +82,61 @@ class StringWireType(AttributeWireType[str]):
         return "string"
 
 
-class NumberWireType(AttributeWireType[ int | float | str ]):
+class NumberWireType(AttributeWireType[int | float | str]):
     marshaled_value_type = int | float | str
 
-    def marshal_type(self) -> ImmutableJsonish:
+    def marshal_type(self) -> str:
         return "number"
 
 
 class BoolWireType(AttributeWireType[bool]):
     marshaled_value_type = bool
 
-    def marshal_type(self) -> ImmutableJsonish:
+    def marshal_type(self) -> str:
         return "bool"
 
 
-W = TypeVar("W", bound=AttributeWireType)
+# TODO what we really want (but needs HKTVs
+#   https://github.com/python/typing/issues/548):
+# W = TypeVar("W", bound=AttributeWireType[M])
+
+
+class OptionalWireType(AttributeWireType[M | None]):
+    marshaled_value_type: type[M | None]
+
+    def __init__(self, inner_attribute_type: AttributeWireType[M]):
+        self.inner_attribute_type = inner_attribute_type
+
+    def marshal_type(self) -> ImmutableJsonish:
+        # all wire types are implicitly nullable so we return this unmodified:
+        return self.inner_attribute_type.marshal_type()
 
 
 class ListWireType(AttributeWireType[list[M]]):
     marshaled_value_type: type[list[M]]
 
-    def __init__(self, inner_attribute_type: W):
+    def __init__(self, inner_attribute_type: AttributeWireType[M]):
         self.inner_attribute_type = inner_attribute_type
 
-    def marshal_type(self) -> ImmutableJsonish:
+    def marshal_type(self) -> list[ImmutableJsonish]:
         return ["list", self.inner_attribute_type.marshal_type()]
 
 
 class SetWireType(AttributeWireType[list[M]]):
     marshaled_value_type: type[list[M]]
 
-    def __init__(self, inner_attribute_type: W):
+    def __init__(self, inner_attribute_type: AttributeWireType[M]):
         self.inner_attribute_type = inner_attribute_type
 
-    def marshal_type(self) -> ImmutableJsonish:
+    def marshal_type(self) -> list[ImmutableJsonish]:
         return ["set", self.inner_attribute_type.marshal_type()]
 
 
 class MapWireType(AttributeWireType[dict[str, M]]):
     marshaled_value_type: type[dict[str, M]]
 
-    def __init__(self, inner_attribute_type: W):
+    def __init__(self, inner_attribute_type: AttributeWireType[M]):
         self.inner_attribute_type = inner_attribute_type
 
-    def marshal_type(self) -> ImmutableJsonish:
+    def marshal_type(self) -> list[ImmutableJsonish]:
         return ["map", self.inner_attribute_type.marshal_type()]

@@ -37,6 +37,8 @@ from ..level2.wire_representation import (
 )
 
 T = TypeVar("T")
+M = TypeVar("M", bound=ImmutableMsgPackish)
+W = TypeVar("W", bound=AttributeWireType[Any])
 
 
 def attribute(
@@ -51,10 +53,11 @@ def attribute(
     description_kind: Union["StringKind", NotSet] = NOT_SET,
     deprecated: bool | NotSet = NOT_SET,
     # tfprovider
-    representation: WireRepresentation | None = None,
-    wire_type: AttributeWireType | None = None,
-    marshaler: AttributeWireTypeMarshaler | None = None,
-    unmarshaler: AttributeWireTypeUnmarshaler | None = None,
+    representation: WireRepresentation[M] | None = None,
+    wire_type: AttributeWireType[M] | None = None,
+    marshaler: AttributeWireTypeMarshaler[AttributeWireType[M]] | None = None,
+    unmarshaler: AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+    | None = None,
     # dataclasses
     **kwargs: Any,
 ) -> Any:
@@ -119,7 +122,7 @@ ANNOTATION_TO_WIRE_TYPE = {
 }
 
 
-def attributes_class_to_usable(klass: type) -> list[Attribute]:
+def attributes_class_to_usable(klass: type) -> list[Attribute[Any]]:
     """
     Transform an `@attribute_class`-decorated class to its usable schema repr.
 

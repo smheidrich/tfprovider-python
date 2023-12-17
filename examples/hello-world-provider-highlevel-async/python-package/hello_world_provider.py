@@ -18,7 +18,7 @@ class HelloWorldCompleteResConfig:
     # bar: datetime = attribute(representation=DateAsStringRepr())
 
 
-class HelloWorldResResource(BaseResource):
+class HelloWorldResResource(BaseResource[None, HelloWorldCompleteResConfig]):
     type_name = "helloworld_res"
     config_type = HelloWorldCompleteResConfig
 
@@ -72,7 +72,7 @@ class HelloWorldResResource(BaseResource):
         raise NotImplementedError("resource imports not yet implemented")
 
 
-class Provider(BaseProvider):
+class Provider(BaseProvider[None, HelloWorldCompleteProviderConfig]):
     provider_state = None
     resource_factories = [HelloWorldResResource]
     config_type = HelloWorldCompleteProviderConfig

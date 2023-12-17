@@ -5,11 +5,13 @@ Combined wire type + value marshaling/unmarshaling.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Generic, TypeVar
 
 from .wire_format import (
     AttributeWireType,
     ImmutableJsonishWithUnknown,
     ImmutableMsgPackish,
+    OptionalWireType,
     StringWireType,
 )
 from .wire_marshaling import (
@@ -21,12 +23,15 @@ from .wire_marshaling import (
     StringWireTypeUnmarshaler,
 )
 
+M = TypeVar("M", bound=ImmutableMsgPackish)
+# yet again, what we really want here W[M], but this needs HKTVs...
+
 
 @dataclass
-class WireRepresentation(ABC):
-    attribute_wire_type: AttributeWireType
-    unmarshaler: AttributeWireTypeUnmarshaler
-    marshaler: AttributeWireTypeMarshaler
+class WireRepresentation(ABC, Generic[M]):
+    attribute_wire_type: AttributeWireType[M]
+    unmarshaler: AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+    marshaler: AttributeWireTypeMarshaler[AttributeWireType[M]]
 
     @abstractmethod
     def unmarshal_value_msgpack(
@@ -35,14 +40,12 @@ class WireRepresentation(ABC):
         pass
 
     @abstractmethod
-    def marshal_value_msgpack(
-        self, value: ImmutableJsonishWithUnknown
-    ) -> ImmutableMsgPackish:
+    def marshal_value_msgpack(self, value: ImmutableJsonishWithUnknown) -> M:
         pass
 
 
 @dataclass
-class StringWireRepresentation(WireRepresentation):
+class StringWireRepresentation(WireRepresentation[str]):
     """
     Trivial string representation.
     """
@@ -58,26 +61,26 @@ class StringWireRepresentation(WireRepresentation):
     def unmarshal_value_msgpack(self, value: ImmutableMsgPackish) -> str:
         return self.unmarshaler.unmarshal_msgpack(value)
 
-    def marshal_value_msgpack(
-        self, value: ImmutableJsonishWithUnknown
-    ) -> ImmutableMsgPackish:
+    def marshal_value_msgpack(self, value: ImmutableJsonishWithUnknown) -> str:
         return self.marshaler.marshal_msgpack(value)
 
 
 @dataclass
-class OptionalWireRepresentation(WireRepresentation):
+class OptionalWireRepresentation(WireRepresentation[M | None]):
     """
     Wrapper around another representation to make it allow null values.
     """
 
-    inner: WireRepresentation
-    attribute_wire_type: AttributeWireType
-    unmarshaler: OptionalWireTypeUnmarshaler
-    marshaler: OptionalWireTypeMarshaler
+    inner: WireRepresentation[M]
+    attribute_wire_type: AttributeWireType[M | None]
+    unmarshaler: OptionalWireTypeUnmarshaler[M | None]
+    marshaler: OptionalWireTypeMarshaler[M | None]
 
-    def __init__(self, inner: WireRepresentation):
+    def __init__(self, inner: WireRepresentation[M]):
         self.inner = inner
-        self.attribute_wire_type = inner.attribute_wire_type
+        # wire type is same as inner repr's because wire values are all
+        # implicitly nullable:
+        self.attribute_wire_type = OptionalWireType(inner.attribute_wire_type)
         self.unmarshaler = OptionalWireTypeUnmarshaler(inner.unmarshaler)
         self.marshaler = OptionalWireTypeMarshaler(inner.marshaler)
 
@@ -90,5 +93,5 @@ class OptionalWireRepresentation(WireRepresentation):
 
     def marshal_value_msgpack(
         self, value: ImmutableJsonishWithUnknown
-    ) -> ImmutableMsgPackish:
+    ) -> M | None:
         return self.marshaler.marshal_msgpack(value)

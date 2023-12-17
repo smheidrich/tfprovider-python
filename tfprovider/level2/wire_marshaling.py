@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 from .wire_format import (
     AttributeWireType,
@@ -8,7 +8,16 @@ from .wire_format import (
     StringWireType,
 )
 
-W = TypeVar("W", bound=AttributeWireType)
+# TODO what we really want (but needs HKTVs
+#   https://github.com/python/typing/issues/548):
+# W = TypeVar("W", bound=AttributeWireType[M])
+W = TypeVar("W", bound=AttributeWireType[Any], covariant=True)
+
+# idea inspired by `returns` library HKTs:
+# M = TypeVar("M", bound=ImmutableJsonish)
+# class AttributeWireTypeTV(Generic[W, M]):
+# W_: type[AttributeWireType]
+# M_: type[ImmutableJsonish]
 
 
 class AttributeWireTypeUnmarshaler(ABC, Generic[W]):
@@ -29,7 +38,7 @@ class AttributeWireTypeMarshaler(ABC, Generic[W]):
         pass
 
 
-class StringWireTypeUnmarshaler(AttributeWireTypeUnmarshaler):
+class StringWireTypeUnmarshaler(AttributeWireTypeUnmarshaler[StringWireType]):
     attribute_wire_type = StringWireType()
 
     def unmarshal_msgpack(self, value: ImmutableMsgPackish) -> str:
@@ -41,10 +50,10 @@ class StringWireTypeUnmarshaler(AttributeWireTypeUnmarshaler):
         return value
 
 
-class StringWireTypeMarshaler(AttributeWireTypeMarshaler):
+class StringWireTypeMarshaler(AttributeWireTypeMarshaler[StringWireType]):
     attribute_wire_type = StringWireType()
 
-    def marshal_msgpack(self, value: Any) -> ImmutableMsgPackish:
+    def marshal_msgpack(self, value: Any) -> str:
         if not isinstance(value, str):
             raise TypeError(
                 f"expected string but got {value!r} which is of type "
@@ -53,8 +62,15 @@ class StringWireTypeMarshaler(AttributeWireTypeMarshaler):
         return value
 
 
-class OptionalWireTypeUnmarshaler(AttributeWireTypeUnmarshaler):
-    def __init__(self, inner: AttributeWireTypeUnmarshaler):
+M = TypeVar("M", bound=ImmutableMsgPackish)
+
+
+class OptionalWireTypeUnmarshaler(
+    AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+):
+    def __init__(
+        self, inner: AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+    ):
         self.inner = inner
         self.attribute_wire_type = inner.attribute_wire_type
 
@@ -66,13 +82,23 @@ class OptionalWireTypeUnmarshaler(AttributeWireTypeUnmarshaler):
         )
 
 
-class OptionalWireTypeMarshaler(AttributeWireTypeMarshaler):
-    def __init__(self, inner: AttributeWireTypeMarshaler):
+class OptionalWireTypeMarshaler(
+    AttributeWireTypeMarshaler[AttributeWireType[M]]
+):
+    def __init__(
+        self, inner: AttributeWireTypeMarshaler[AttributeWireType[M]]
+    ):
         self.inner = inner
         self.attribute_wire_type = inner.attribute_wire_type
 
-    def marshal_msgpack(self, value: Any) -> ImmutableMsgPackish:
-        return self.inner.marshal_msgpack(value) if value is not None else None
+    def marshal_msgpack(self, value: Any) -> M | None:
+        if value is None:
+            return None
+        # this type should be correct, but inferring it would require HKTVs
+        # that allow us to say attribute_wire_type is of type W[M] and we'd be
+        # able to change the method signature of our base class:
+        marshaled_value: M = cast(M, self.inner.marshal_msgpack(value))
+        return marshaled_value
 
 
 #### ye olde #####

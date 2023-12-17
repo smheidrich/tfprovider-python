@@ -5,14 +5,15 @@ import datetime
 from base64 import b64encode
 from collections.abc import Callable
 from concurrent import futures
+from typing import Any
 
 import grpc
 import grpc.aio
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
 from cryptography.x509 import ExtendedKeyUsage
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 from tfplugin_proto import tfplugin6_4_pb2_grpc
 
 from .. import grpc_controller_pb2_grpc
@@ -20,9 +21,9 @@ from ..health_servicer import _configure_health_server
 
 
 class RPCPluginServerBase:
-    _server_factory: Callable
+    _server_factory: Callable[..., Any]
     "*Must* be set by subclasses."
-    _controller_servicer_factory: Callable
+    _controller_servicer_factory: Callable[..., Any]
     "*Must* be set by subclasses."
 
     def __init__(
