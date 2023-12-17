@@ -149,7 +149,7 @@ def attributes_class_to_usable(klass: type) -> list[Attribute]:
     ]
 
 
-def attributes_class_to_protobuf(klass) -> list[pb.Schema.Attribute]:
+def attributes_class_to_protobuf(klass: type) -> list[pb.Schema.Attribute]:
     """
     Transform an `@attribute_class`-decorated class to Terraform Protobuf.
     """
