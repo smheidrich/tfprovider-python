@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Generic, TypeAlias, TypeVar
+from typing import Any, Generic, TypeAlias, TypeVar
 
-from ...level1.rpc_plugin import AsyncRPCPluginServer
 from tfplugin_proto.tfplugin6_4_pb2 import (
     ApplyResourceChange,
     ConfigureProvider,
@@ -19,6 +18,8 @@ from tfplugin_proto.tfplugin6_4_pb2 import (
 from tfplugin_proto.tfplugin6_4_pb2_grpc import (
     ProviderServicer as L1BaseProviderServicer,
 )
+
+from ...level1.rpc_plugin import AsyncRPCPluginServer
 from ...level2.attribute_path import AttributePath
 from ...level2.diagnostics import Diagnostics
 from ...level2.usable_schema import (
@@ -43,24 +44,33 @@ from ..utils import exception_to_diagnostics
 class AdapterProviderServicer(L1BaseProviderServicer):
     adapted: "Provider"
 
-    def __init__(self, adapted: "Provider"):
+    def __init__(self, adapted: "Provider") -> None:
         self.adapted = adapted
 
-    async def GetMetadata(self, request, context):
-        await self.adapted.init()
-        return GetMetadata.Response(
-            server_capabilities=ServerCapabilities(
-                plan_destroy=False, get_provider_schema_optional=False
-            ),
-        )
+    async def GetMetadata(
+        self, request: GetMetadata.Request, context: Any
+    ) -> GetMetadata.Response:
+        diagnostics = Diagnostics()
+        with exception_to_diagnostics(diagnostics):
+            await self.adapted.init(diagnostics)
+            return GetMetadata.Response(
+                server_capabilities=ServerCapabilities(
+                    plan_destroy=False, get_provider_schema_optional=False
+                ),
+            )
+        return GetMetadata.Response(diagnostics=diagnostics)
 
-    async def GetProviderSchema(self, request, context):
+    async def GetProviderSchema(
+        self, request: GetProviderSchema.Request, context: Any
+    ) -> GetProviderSchema.Response:
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             return self.adapted.provider_schema.to_protobuf()
         return GetProviderSchema.Response(diagnostics=diagnostics)
 
-    async def ValidateProviderConfig(self, request, context):
+    async def ValidateProviderConfig(
+        self, request: ValidateProviderConfig.Request, context: Any
+    ) -> ValidateProviderConfig.Response:
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             config = deserialize_dynamic_value_into_attribute_class_instance(
@@ -69,7 +79,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             await self.adapted.validate_provider_config(config, diagnostics)
         return ValidateProviderConfig.Response(diagnostics=diagnostics)
 
-    async def ValidateResourceConfig(self, request, context):
+    async def ValidateResourceConfig(
+        self, request: ValidateResourceConfig.Request, context: Any
+    ) -> ValidateResourceConfig.Response:
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
@@ -79,7 +91,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             await resource.validate_resource_config(config, diagnostics)
         return ValidateResourceConfig.Response(diagnostics=diagnostics)
 
-    async def ConfigureProvider(self, request, context):
+    async def ConfigureProvider(
+        self, request: ConfigureProvider.Request, context: Any
+    ) -> ConfigureProvider.Response:
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             config = deserialize_dynamic_value_into_attribute_class_instance(
@@ -88,7 +102,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             await self.adapted.configure_provider(config, diagnostics)
         return ConfigureProvider.Response(diagnostics=diagnostics)
 
-    async def PlanResourceChange(self, request, context):
+    async def PlanResourceChange(
+        self, request: PlanResourceChange.Request, context: Any
+    ) -> PlanResourceChange.Response:
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
@@ -114,22 +130,22 @@ class AdapterProviderServicer(L1BaseProviderServicer):
                     planned_state
                 )
             )
-            return PlanResourceChange.Response(
-                planned_state=serialized_planned_state,
-                diagnostics=diagnostics,
-                **(
-                    {
-                        "requires_replace": [
-                            path.to_protobuf() for path in requires_replace
-                        ]
-                    }
-                    if requires_replace is not None
-                    else {}
+            if requires_replace:
+                return PlanResourceChange.Response(
+                    planned_state=serialized_planned_state,
+                    diagnostics=diagnostics,
+                    requires_replace=requires_replace,
                 )
-            )
+            else:
+                return PlanResourceChange.Response(
+                    planned_state=serialized_planned_state,
+                    diagnostics=diagnostics,
+                )
         return PlanResourceChange.Response(diagnostics=diagnostics)
 
-    async def ApplyResourceChange(self, request, context):
+    async def ApplyResourceChange(
+        self, request: ApplyResourceChange.Request, context: Any
+    ) -> ApplyResourceChange.Response:
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
@@ -156,7 +172,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             )
         return ApplyResourceChange.Response(diagnostics=diagnostics)
 
-    async def UpgradeResourceState(self, request, context):
+    async def UpgradeResourceState(
+        self, request: UpgradeResourceState.Request, context: Any
+    ) -> UpgradeResourceState.Response:
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
@@ -179,7 +197,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             )
         return UpgradeResourceState.Response(diagnostics=diagnostics)
 
-    async def ReadResource(self, request, context):
+    async def ReadResource(
+        self, request: ReadResource.Request, context: Any
+    ) -> ReadResource.Response:
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
@@ -203,7 +223,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             )
         return ReadResource.Response(diagnostics=diagnostics)
 
-    async def ImportResourceState(self, request, context):
+    async def ImportResourceState(
+        self, request: ImportResourceState.Request, context: Any
+    ) -> ImportResourceState.Response:
         diagnostics = Diagnostics()
         with exception_to_diagnostics(diagnostics):
             resource = self._get_resource_by_name(request.type_name)
@@ -341,14 +363,14 @@ class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
     def __init__(self, provider_state: PS) -> None:
         self.provider_state = provider_state
 
-    def validate_resource_config(
+    async def validate_resource_config(
         self, config: RC, diagnostics: Diagnostics
     ) -> None:
         """
         To be overridden by subclasses if needed.
         """
 
-    def plan_resource_change(
+    async def plan_resource_change(
         self,
         prior_state: RC | None,
         config: RC,
@@ -361,7 +383,7 @@ class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
         return config
 
     @abstractmethod
-    def apply_resource_change(
+    async def apply_resource_change(
         self,
         prior_state: RC | None,
         config: RC | None,
@@ -377,7 +399,7 @@ class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
     #   other methods... => introduce ORC (old resource config) type (w/
     #   possibility of making it a union)? or just pass the JSON?
     @abstractmethod
-    def upgrade_resource_state(
+    async def upgrade_resource_state(
         self, state: RC, version: int, diagnostics: Diagnostics
     ) -> RC:
         """
@@ -385,7 +407,7 @@ class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
         """
 
     @abstractmethod
-    def read_resource(
+    async def read_resource(
         self, current_state: RC, diagnostics: Diagnostics
     ) -> RC | None:
         """
@@ -393,7 +415,7 @@ class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
         """
 
     @abstractmethod
-    def import_resource(self, id: str, diagnostics: Diagnostics) -> RC:
+    async def import_resource(self, id: str, diagnostics: Diagnostics) -> RC:
         """
         To be overridden by subclasses.
         """

@@ -6,7 +6,7 @@ import json
 from collections.abc import Callable
 from dataclasses import Field, dataclass, field, fields
 from inspect import get_annotations
-from typing import Any, TypeVar, Union, dataclass_transform
+from typing import Any, TypeVar, Union, cast, dataclass_transform
 
 from tfplugin_proto import tfplugin6_4_pb2 as pb
 
@@ -21,10 +21,19 @@ from ..level2.usable_schema import (
     ProviderSchema,
     StringKind,
 )
-from ..level2.wire_format import ImmutableMsgPackish, StringWireType
+from ..level2.wire_format import (
+    AttributeWireType,
+    ImmutableMsgPackish,
+    StringWireType,
+)
+from ..level2.wire_marshaling import (
+    AttributeWireTypeMarshaler,
+    AttributeWireTypeUnmarshaler,
+)
 from ..level2.wire_representation import (
     OptionalWireRepresentation,
     StringWireRepresentation,
+    WireRepresentation,
 )
 
 T = TypeVar("T")
@@ -32,7 +41,7 @@ T = TypeVar("T")
 
 def attribute(
     # dataclasses
-    *args,
+    *args: Any,
     # Terraform
     description: str | NotSet = NOT_SET,
     required: bool | NotSet = NOT_SET,
@@ -42,12 +51,12 @@ def attribute(
     description_kind: Union["StringKind", NotSet] = NOT_SET,
     deprecated: bool | NotSet = NOT_SET,
     # tfprovider
-    representation=None,
-    wire_type=None,
-    marshaler=None,
-    unmarshaler=None,
+    representation: WireRepresentation | None = None,
+    wire_type: AttributeWireType | None = None,
+    marshaler: AttributeWireTypeMarshaler | None = None,
+    unmarshaler: AttributeWireTypeUnmarshaler | None = None,
     # dataclasses
-    **kwargs,
+    **kwargs: Any,
 ) -> Any:
     """
     Customize a Terraform schema attribute.
@@ -78,7 +87,9 @@ def attribute(
 
 
 @dataclass_transform(field_specifiers=(attribute, Field))
-def attributes_class(*args, **kwargs) -> Callable[[type[T]], type[T]]:
+def attributes_class(
+    *args: Any, **kwargs: Any
+) -> Callable[[type[T]], type[T]]:
     """
     Mark a class as representing a Terraform schema attribute list type.
 
@@ -90,7 +101,7 @@ def attributes_class(*args, **kwargs) -> Callable[[type[T]], type[T]]:
     """
 
     def _schema(klass: type[T]) -> type[T]:
-        return dataclass(*args, **kwargs)(klass)
+        return cast(type[T], dataclass(*args, **kwargs)(klass))
 
     return _schema
 
@@ -108,7 +119,7 @@ ANNOTATION_TO_WIRE_TYPE = {
 }
 
 
-def attributes_class_to_usable(klass) -> list[Attribute]:
+def attributes_class_to_usable(klass: type) -> list[Attribute]:
     """
     Transform an `@attribute_class`-decorated class to its usable schema repr.
 

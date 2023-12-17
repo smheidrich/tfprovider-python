@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import json
 from collections.abc import Mapping
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 import msgpack
 
@@ -40,7 +40,7 @@ T = TypeVar("T")
 
 def deserialize_dynamic_value(value: DynamicValue) -> ImmutableMsgPackish:
     if (b := value.msgpack) is not None:
-        return msgpack.unpackb(b)
+        return cast(ImmutableMsgPackish, msgpack.unpackb(b))
     elif (b := value.json) is not None:
         return json.loads(b.decode("utf-8"))
 

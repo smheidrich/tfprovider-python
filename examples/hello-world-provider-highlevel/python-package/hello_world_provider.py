@@ -86,7 +86,7 @@ class Provider(BaseProvider):
         print(f"vpc {config.foo=}", file=stderr)
 
 
-def main():
+def main() -> None:
     s = Provider()
     s.run()
 

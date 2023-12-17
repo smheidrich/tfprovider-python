@@ -68,8 +68,7 @@ class HelloWorldResResource(BaseResource):
         return current_state
 
     async def import_resource(
-        self, id: str, diagnostics: Diagnostics
-    ) -> HelloWorldCompleteResConfig:
+        self, id: str, diagnostics: Diagnostics) -> HelloWorldCompleteResConfig:
         raise NotImplementedError("resource imports not yet implemented")
 
 
@@ -87,7 +86,7 @@ class Provider(BaseProvider):
         print(f"vpc {config.foo=}", file=stderr)
 
 
-def main():
+def main() -> None:
     s = Provider()
     asyncio.run(s.run())
 

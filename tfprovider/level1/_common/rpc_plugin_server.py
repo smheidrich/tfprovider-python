@@ -11,7 +11,8 @@ import grpc.aio
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID
+from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
+from cryptography.x509 import ExtendedKeyUsage
 from tfplugin_proto import tfplugin6_4_pb2_grpc
 
 from .. import grpc_controller_pb2_grpc
@@ -35,10 +36,10 @@ class RPCPluginServerBase:
         server = self.__class__._server_factory(
             futures.ThreadPoolExecutor(max_workers=10)
         )
-        grpc_controller_pb2_grpc.add_GRPCControllerServicer_to_server(
+        grpc_controller_pb2_grpc.add_GRPCControllerServicer_to_server(  # type: ignore
             self.__class__._controller_servicer_factory(server), server
         )
-        tfplugin6_4_pb2_grpc.add_ProviderServicer_to_server(
+        tfplugin6_4_pb2_grpc.add_ProviderServicer_to_server(  # type: ignore
             provider_servicer, server
         )
         key_cert_pair_for_grpc = (
@@ -96,10 +97,10 @@ def generate_server_cert() -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
             critical=False,
         )
         .add_extension(
-            x509.ExtendedKeyUsage(
+            ExtendedKeyUsage(
                 [
-                    x509.ExtendedKeyUsageOID.CLIENT_AUTH,
-                    x509.ExtendedKeyUsageOID.SERVER_AUTH,
+                    ExtendedKeyUsageOID.CLIENT_AUTH,
+                    ExtendedKeyUsageOID.SERVER_AUTH,
                 ]
             ),
             critical=False,

@@ -13,7 +13,7 @@ class AsyncRPCPluginServer(RPCPluginServerBase):
     _server_factory = AsyncServerFactory
     _controller_servicer_factory = AsyncControllerServicer
 
-    async def run(self):
+    async def run(self) -> None:
         parent_pid = os.getppid()
         await self.server.start()
         print(f"server listening on port {self.port}", file=stderr)

@@ -13,7 +13,7 @@ class SyncRPCPluginServer(RPCPluginServerBase):
     _server_factory = SyncServerFactory
     _controller_servicer_factory = SyncControllerServicer
 
-    def run(self):
+    def run(self) -> None:
         parent_pid = os.getppid()
         self.server.start()
         print(f"server listening on port {self.port}", file=stderr)
