@@ -134,7 +134,10 @@ class AdapterProviderServicer(L1BaseProviderServicer):
                 return PlanResourceChange.Response(
                     planned_state=serialized_planned_state,
                     diagnostics=diagnostics,
-                    requires_replace=requires_replace,
+                    requires_replace=[
+                        attribute_path.to_protobuf()
+                        for attribute_path in requires_replace
+                    ],
                 )
             else:
                 return PlanResourceChange.Response(
