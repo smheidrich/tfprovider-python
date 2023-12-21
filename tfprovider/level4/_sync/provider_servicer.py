@@ -126,7 +126,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
             else:
                 planned_state, requires_replace = inner_response, None
             serialized_planned_state = (
-                serialize_attribute_class_instance_to_dynamic_value(
+                serialize_optional_attribute_class_instance_to_dynamic_value(
                     planned_state
                 )
             )
@@ -379,11 +379,11 @@ class Resource(DefinesSchema[RC], ABC, Generic[PS, RC]):
         config: RC,
         proposed_new_state: RC | None,
         diagnostics: Diagnostics,
-    ) -> PlanResourceChangeResponse[RC]:
+    ) -> PlanResourceChangeResponse[RC] | None:
         """
         To be overridden by subclasses if needed.
         """
-        return config
+        return proposed_new_state
 
     @abstractmethod
     def apply_resource_change(
