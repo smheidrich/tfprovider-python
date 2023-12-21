@@ -25,12 +25,14 @@ from ..level2.wire_format import (
     AttributeWireType,
     ImmutableMsgPackish,
     StringWireType,
+    Unknown,
 )
 from ..level2.wire_marshaling import (
     AttributeWireTypeMarshaler,
     AttributeWireTypeUnmarshaler,
 )
 from ..level2.wire_representation import (
+    MaybeUnknownWireRepresentation,
     OptionalWireRepresentation,
     StringWireRepresentation,
     WireRepresentation,
@@ -109,16 +111,24 @@ def attributes_class(
     return _schema
 
 
-ANNOTATION_TO_REPRESENTATION = {
+ANNOTATION_TO_REPRESENTATION: dict[Any, WireRepresentation[Any]] = {
     str: StringWireRepresentation(),
     # TODO make this happen automatically
     (str | None): OptionalWireRepresentation(StringWireRepresentation()),
+    (str | Unknown): MaybeUnknownWireRepresentation(
+        StringWireRepresentation()
+    ),
+    (str | None | Unknown): MaybeUnknownWireRepresentation(
+        OptionalWireRepresentation(StringWireRepresentation())
+    ),
 }
 
-ANNOTATION_TO_WIRE_TYPE = {
+ANNOTATION_TO_WIRE_TYPE: dict[Any, AttributeWireType[Any]] = {
     str: StringWireType(),
     # TODO make this happen automatically
     (str | None): StringWireType(),
+    (str | Unknown): StringWireType(),
+    (str | None | Unknown): StringWireType(),
 }
 
 

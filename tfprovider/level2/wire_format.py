@@ -112,6 +112,18 @@ class OptionalWireType(AttributeWireType[M | None]):
         return self.inner_attribute_type.marshal_type()
 
 
+class MaybeUnknownWireType(AttributeWireType[M | msgpack.ExtType]):
+    marshaled_value_type: type[M | msgpack.ExtType]
+
+    def __init__(self, inner_attribute_type: AttributeWireType[M]):
+        self.inner_attribute_type = inner_attribute_type
+
+    def marshal_type(self) -> ImmutableJsonish:
+        # all wire types are (AFAICT) implicitly unknown-able so we return this
+        # unmodified:
+        return self.inner_attribute_type.marshal_type()
+
+
 class ListWireType(AttributeWireType[list[M]]):
     marshaled_value_type: type[list[M]]
 

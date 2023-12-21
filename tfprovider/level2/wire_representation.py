@@ -7,16 +7,21 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Generic, TypeVar
 
+import msgpack
+
 from .wire_format import (
     AttributeWireType,
     ImmutableJsonishWithUnknown,
     ImmutableMsgPackish,
+    MaybeUnknownWireType,
     OptionalWireType,
     StringWireType,
 )
 from .wire_marshaling import (
     AttributeWireTypeMarshaler,
     AttributeWireTypeUnmarshaler,
+    MaybeUnknownWireTypeMarshaler,
+    MaybeUnknownWireTypeUnmarshaler,
     OptionalWireTypeMarshaler,
     OptionalWireTypeUnmarshaler,
     StringWireTypeMarshaler,
@@ -94,4 +99,38 @@ class OptionalWireRepresentation(WireRepresentation[M | None]):
     def marshal_value_msgpack(
         self, value: ImmutableJsonishWithUnknown
     ) -> M | None:
+        return self.marshaler.marshal_msgpack(value)
+
+
+@dataclass
+class MaybeUnknownWireRepresentation(WireRepresentation[M | msgpack.ExtType]):
+    """
+    Wrapper around another representation to make it allow unknown values.
+    """
+
+    inner: WireRepresentation[M]
+    attribute_wire_type: AttributeWireType[M | msgpack.ExtType]
+    unmarshaler: MaybeUnknownWireTypeUnmarshaler[M | msgpack.ExtType]
+    marshaler: MaybeUnknownWireTypeMarshaler[M | msgpack.ExtType]
+
+    def __init__(self, inner: WireRepresentation[M]):
+        self.inner = inner
+        # wire type is same as inner repr's because wire values are all
+        # implicitly unknown-able:
+        self.attribute_wire_type = MaybeUnknownWireType(
+            inner.attribute_wire_type
+        )
+        self.unmarshaler = MaybeUnknownWireTypeUnmarshaler(inner.unmarshaler)
+        self.marshaler = MaybeUnknownWireTypeMarshaler(inner.marshaler)
+
+    # TODO DRY? see above
+
+    def unmarshal_value_msgpack(
+        self, value: ImmutableMsgPackish
+    ) -> ImmutableJsonishWithUnknown:
+        return self.unmarshaler.unmarshal_msgpack(value)
+
+    def marshal_value_msgpack(
+        self, value: ImmutableJsonishWithUnknown
+    ) -> M | msgpack.ExtType:
         return self.marshaler.marshal_msgpack(value)

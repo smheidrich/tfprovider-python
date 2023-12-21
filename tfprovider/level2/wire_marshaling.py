@@ -1,11 +1,16 @@
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar, cast
 
+import msgpack
+
 from .wire_format import (
     AttributeWireType,
     ImmutableJsonishWithUnknown,
     ImmutableMsgPackish,
+    RefinedUnknown,
     StringWireType,
+    Unknown,
+    UnrefinedUnknown,
 )
 
 # TODO what we really want (but needs HKTVs
@@ -99,6 +104,52 @@ class OptionalWireTypeMarshaler(
         # able to change the method signature of our base class:
         marshaled_value: M = cast(M, self.inner.marshal_msgpack(value))
         return marshaled_value
+
+
+class MaybeUnknownWireTypeUnmarshaler(
+    AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+):
+    def __init__(
+        self, inner: AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+    ):
+        self.inner = inner
+        self.attribute_wire_type = inner.attribute_wire_type
+
+    def unmarshal_msgpack(
+        self, value: ImmutableMsgPackish
+    ) -> ImmutableJsonishWithUnknown:
+        if isinstance(value, msgpack.ExtType):
+            if value.code == 0:
+                return UnrefinedUnknown()
+            elif value.code == 12:
+                raise NotImplementedError("")
+            else:
+                return Unknown()
+        else:
+            return self.inner.unmarshal_msgpack(value)
+
+
+class MaybeUnknownWireTypeMarshaler(
+    AttributeWireTypeMarshaler[AttributeWireType[M]]
+):
+    def __init__(
+        self, inner: AttributeWireTypeMarshaler[AttributeWireType[M]]
+    ):
+        self.inner = inner
+        self.attribute_wire_type = inner.attribute_wire_type
+
+    def marshal_msgpack(self, value: Any) -> M | msgpack.ExtType:
+        if isinstance(value, UnrefinedUnknown):
+            return msgpack.ExtType(0, b"")
+        elif isinstance(value, RefinedUnknown):
+            raise NotImplementedError("")
+        elif isinstance(value, Unknown):
+            assert False, "should never happen (exhaustive)"
+        else:
+            # this type should be correct, but inferring it would require HKTVs
+            # that allow us to say attribute_wire_type is of type W[M] and we'd
+            # be able to change the method signature of our base class:
+            return cast(M, self.inner.marshal_msgpack(value))
 
 
 #### ye olde #####
