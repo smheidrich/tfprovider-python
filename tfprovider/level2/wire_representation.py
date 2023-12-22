@@ -3,9 +3,9 @@ Combined wire type + value marshaling/unmarshaling.
 """
 # TODO better name might be type mapping? or sth. like that.
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, cast
 
 import msgpack
 
@@ -35,18 +35,20 @@ M = TypeVar("M", bound=ImmutableMsgPackish)
 @dataclass
 class WireRepresentation(ABC, Generic[M]):
     attribute_wire_type: AttributeWireType[M]
+    "*Must* be set by subclasses."
     unmarshaler: AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+    "*Must* be set by subclasses."
     marshaler: AttributeWireTypeMarshaler[AttributeWireType[M]]
+    "*Must* be set by subclasses."
 
-    @abstractmethod
     def unmarshal_value_msgpack(
         self, value: ImmutableMsgPackish
     ) -> ImmutableJsonishWithUnknown:
-        pass
+        return self.unmarshaler.unmarshal_msgpack(value)
 
-    @abstractmethod
     def marshal_value_msgpack(self, value: ImmutableJsonishWithUnknown) -> M:
-        pass
+        # TODO cf. comment on marshal_msgpack
+        return cast(M, self.marshaler.marshal_msgpack(value))
 
 
 @dataclass
@@ -62,12 +64,6 @@ class StringWireRepresentation(WireRepresentation[str]):
     marshaler: StringWireTypeMarshaler = field(
         default=StringWireTypeMarshaler()
     )
-
-    def unmarshal_value_msgpack(self, value: ImmutableMsgPackish) -> str:
-        return self.unmarshaler.unmarshal_msgpack(value)
-
-    def marshal_value_msgpack(self, value: ImmutableJsonishWithUnknown) -> str:
-        return self.marshaler.marshal_msgpack(value)
 
 
 @dataclass
@@ -88,18 +84,6 @@ class OptionalWireRepresentation(WireRepresentation[M | None]):
         self.attribute_wire_type = OptionalWireType(inner.attribute_wire_type)
         self.unmarshaler = OptionalWireTypeUnmarshaler(inner.unmarshaler)
         self.marshaler = OptionalWireTypeMarshaler(inner.marshaler)
-
-    # TODO DRY? see above
-
-    def unmarshal_value_msgpack(
-        self, value: ImmutableMsgPackish
-    ) -> ImmutableJsonishWithUnknown:
-        return self.unmarshaler.unmarshal_msgpack(value)
-
-    def marshal_value_msgpack(
-        self, value: ImmutableJsonishWithUnknown
-    ) -> M | None:
-        return self.marshaler.marshal_msgpack(value)
 
 
 @dataclass
@@ -122,15 +106,3 @@ class MaybeUnknownWireRepresentation(WireRepresentation[M | msgpack.ExtType]):
         )
         self.unmarshaler = MaybeUnknownWireTypeUnmarshaler(inner.unmarshaler)
         self.marshaler = MaybeUnknownWireTypeMarshaler(inner.marshaler)
-
-    # TODO DRY? see above
-
-    def unmarshal_value_msgpack(
-        self, value: ImmutableMsgPackish
-    ) -> ImmutableJsonishWithUnknown:
-        return self.unmarshaler.unmarshal_msgpack(value)
-
-    def marshal_value_msgpack(
-        self, value: ImmutableJsonishWithUnknown
-    ) -> M | msgpack.ExtType:
-        return self.marshaler.marshal_msgpack(value)

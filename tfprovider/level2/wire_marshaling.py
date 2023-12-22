@@ -38,8 +38,11 @@ class AttributeWireTypeUnmarshaler(ABC, Generic[W]):
 class AttributeWireTypeMarshaler(ABC, Generic[W]):
     attribute_wire_type: W
 
+    # TODO for an attribute wire type of type W[M], this actually returns M,
+    # but there is no way to express that in Python's current typing system
+    # (needs generic bounds or HKTVs)
     @abstractmethod
-    def marshal_msgpack(self, value: Any) -> ImmutableMsgPackish:  # TODO
+    def marshal_msgpack(self, value: Any) -> ImmutableMsgPackish:
         pass
 
 
