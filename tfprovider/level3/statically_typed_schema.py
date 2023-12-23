@@ -24,6 +24,8 @@ from ..level2.usable_schema import (
 from ..level2.wire_format import (
     AttributeWireType,
     ImmutableMsgPackish,
+    OptionalWireType,
+    SetWireType,
     StringWireType,
     Unknown,
 )
@@ -34,6 +36,7 @@ from ..level2.wire_marshaling import (
 from ..level2.wire_representation import (
     MaybeUnknownWireRepresentation,
     OptionalWireRepresentation,
+    SetWireRepresentation,
     StringWireRepresentation,
     WireRepresentation,
 )
@@ -122,6 +125,10 @@ ANNOTATION_TO_REPRESENTATION: dict[Any, WireRepresentation[Any, Any]] = {
     (str | None | Unknown): MaybeUnknownWireRepresentation(
         OptionalWireRepresentation(StringWireRepresentation())
     ),
+    set[str]: SetWireRepresentation(StringWireRepresentation()),
+    (set[str] | None): OptionalWireRepresentation(
+        SetWireRepresentation(StringWireRepresentation())
+    ),
 }
 
 ANNOTATION_TO_WIRE_TYPE: dict[Any, AttributeWireType[Any]] = {
@@ -130,6 +137,8 @@ ANNOTATION_TO_WIRE_TYPE: dict[Any, AttributeWireType[Any]] = {
     (str | None): StringWireType(),
     (str | Unknown): StringWireType(),
     (str | None | Unknown): StringWireType(),
+    set[str]: SetWireType(StringWireType()),
+    (set[str] | None): OptionalWireType(SetWireType(StringWireType())),
 }
 
 
@@ -237,22 +246,30 @@ def unmarshal_msgpack_into_attributes_class_instance(
     # TODO see https://github.com/python/mypy/issues/14941 for why
     #   dataclass+type[T] doesn't currently work => typing disabled for now:
     for attr_field in fields(klass):  # type: ignore
-        name = attr_field.name
-        marshaled_value = marshaled_dict[name]  # TODO error handling
-        config = attr_field.metadata["tfprovider"]
-        if (representation := config.get("representation")) is not None:
-            unmarshaled_value = representation.unmarshal_value_msgpack(
-                marshaled_value
-            )
-        elif (unmarshaler := config.get("unmarshaler")) is not None:
-            unmarshaled_value = unmarshaler.unmarshal_msgpack(marshaled_value)
-        else:
-            annotation = annotations[name]
-            representation = ANNOTATION_TO_REPRESENTATION[annotation]
-            unmarshaled_value = representation.unmarshal_value_msgpack(
-                marshaled_value
-            )
-        constructor_kwargs[name] = unmarshaled_value
+        try:
+            name = attr_field.name
+            marshaled_value = marshaled_dict[name]  # TODO error handling
+            config = attr_field.metadata["tfprovider"]
+            if (representation := config.get("representation")) is not None:
+                unmarshaled_value = representation.unmarshal_value_msgpack(
+                    marshaled_value
+                )
+            elif (unmarshaler := config.get("unmarshaler")) is not None:
+                unmarshaled_value = unmarshaler.unmarshal_msgpack(
+                    marshaled_value
+                )
+            else:
+                annotation = annotations[name]
+                representation = ANNOTATION_TO_REPRESENTATION[annotation]
+                unmarshaled_value = representation.unmarshal_value_msgpack(
+                    marshaled_value
+                )
+            constructor_kwargs[name] = unmarshaled_value
+        except Exception as e:
+            # TODO better exception type
+            raise ValueError(
+                f"error unmarshaling attribute {attr_field.name!r}"
+            ) from e
     return klass(**constructor_kwargs)
 
 

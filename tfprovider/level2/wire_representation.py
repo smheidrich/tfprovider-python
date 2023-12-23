@@ -4,6 +4,7 @@ Combined wire type + value marshaling/unmarshaling.
 # TODO better name might be type mapping? or sth. like that.
 
 from abc import ABC
+from collections.abc import Set
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Generic, TypeVar, cast
@@ -15,6 +16,7 @@ from .wire_format import (
     ImmutableMsgPackish,
     MaybeUnknownWireType,
     OptionalWireType,
+    SetWireType,
     StringWireType,
     Unknown,
 )
@@ -29,6 +31,8 @@ from .wire_marshaling import (
     MaybeUnknownWireTypeUnmarshaler,
     OptionalWireTypeMarshaler,
     OptionalWireTypeUnmarshaler,
+    SetWireTypeMarshaler,
+    SetWireTypeUnmarshaler,
     StringWireTypeMarshaler,
     StringWireTypeUnmarshaler,
 )
@@ -143,3 +147,21 @@ class MaybeUnknownWireRepresentation(
         )
         self.unmarshaler = MaybeUnknownWireTypeUnmarshaler(inner.unmarshaler)
         self.marshaler = MaybeUnknownWireTypeMarshaler(inner.marshaler)
+
+
+@dataclass
+class SetWireRepresentation(WireRepresentation[list[M], Set[T]]):
+    """
+    Wrapper around another representation representing a set of its values.
+    """
+
+    inner: WireRepresentation[M, T]
+    attribute_wire_type: SetWireType[M]
+    unmarshaler: SetWireTypeUnmarshaler[M, T]
+    marshaler: SetWireTypeMarshaler[M, T]
+
+    def __init__(self, inner: WireRepresentation[M, T]):
+        self.inner = inner
+        self.attribute_wire_type = SetWireType(inner.attribute_wire_type)
+        self.unmarshaler = SetWireTypeUnmarshaler(inner.unmarshaler)
+        self.marshaler = SetWireTypeMarshaler(inner.marshaler)

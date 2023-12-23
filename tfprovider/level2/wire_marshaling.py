@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Sequence, Set
 from datetime import date, datetime
 from typing import Any, Generic, TypeVar, cast
 
@@ -8,6 +9,7 @@ from .wire_format import (
     AttributeWireType,
     ImmutableMsgPackish,
     RefinedUnknown,
+    SetWireType,
     StringWireType,
     Unknown,
     UnrefinedUnknown,
@@ -207,6 +209,37 @@ class MaybeUnknownWireTypeMarshaler(
             # that allow us to say attribute_wire_type is of type W[M] and we'd
             # be able to change the method signature of our base class:
             return cast(M, self.inner.marshal_msgpack(value))
+
+
+class SetWireTypeUnmarshaler(
+    AttributeWireTypeUnmarshaler[AttributeWireType[list[M]], Set[T]]
+):
+    def __init__(
+        self, inner: AttributeWireTypeUnmarshaler[AttributeWireType[M], T]
+    ):
+        self.inner = inner
+        self.attribute_wire_type = SetWireType(inner.attribute_wire_type)
+
+    def unmarshal_msgpack(self, value: ImmutableMsgPackish) -> Set[T]:
+        if not isinstance(value, Sequence):
+            raise TypeError(f"expected sequence but got {value!r}")
+        return set(self.inner.unmarshal_msgpack(elem) for elem in value)
+
+
+class SetWireTypeMarshaler(
+    AttributeWireTypeMarshaler[AttributeWireType[list[M]], Set[T]]
+):
+    def __init__(
+        self, inner: AttributeWireTypeMarshaler[AttributeWireType[M], T]
+    ):
+        self.inner = inner
+        self.attribute_wire_type = SetWireType(inner.attribute_wire_type)
+
+    def marshal_msgpack(self, value: Set[T]) -> list[M]:
+        # TODO check if iterable
+        # type should be correct, but inferring it would require HKTVs/GBs
+        marshaled_value = [self.inner.marshal_msgpack(x) for x in value]
+        return cast(list[M], marshaled_value)
 
 
 #### ye olde #####

@@ -51,7 +51,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         self, request: GetMetadata.Request, context: Any
     ) -> GetMetadata.Response:
         diagnostics = Diagnostics()
-        with exception_to_diagnostics(diagnostics):
+        with exception_to_diagnostics(
+            diagnostics, "getting provider metadata"
+        ):
             await self.adapted.init(diagnostics)
             return GetMetadata.Response(
                 server_capabilities=ServerCapabilities(
@@ -64,7 +66,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         self, request: GetProviderSchema.Request, context: Any
     ) -> GetProviderSchema.Response:
         diagnostics = Diagnostics()
-        with exception_to_diagnostics(diagnostics):
+        with exception_to_diagnostics(diagnostics, "getting provider schema"):
             return self.adapted.provider_schema.to_protobuf()
         return GetProviderSchema.Response(diagnostics=diagnostics)
 
@@ -72,7 +74,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         self, request: ValidateProviderConfig.Request, context: Any
     ) -> ValidateProviderConfig.Response:
         diagnostics = Diagnostics()
-        with exception_to_diagnostics(diagnostics):
+        with exception_to_diagnostics(
+            diagnostics, "validating provider config"
+        ):
             config = deserialize_dynamic_value_into_attribute_class_instance(
                 request.config, self.adapted.config_type
             )
@@ -83,7 +87,9 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         self, request: ValidateResourceConfig.Request, context: Any
     ) -> ValidateResourceConfig.Response:
         diagnostics = Diagnostics()
-        with exception_to_diagnostics(diagnostics):
+        with exception_to_diagnostics(
+            diagnostics, "validating resource config"
+        ):
             resource = self._get_resource_by_name(request.type_name)
             config = deserialize_dynamic_value_into_attribute_class_instance(
                 request.config, resource.config_type
@@ -95,7 +101,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         self, request: ConfigureProvider.Request, context: Any
     ) -> ConfigureProvider.Response:
         diagnostics = Diagnostics()
-        with exception_to_diagnostics(diagnostics):
+        with exception_to_diagnostics(diagnostics, "configuring provider"):
             config = deserialize_dynamic_value_into_attribute_class_instance(
                 request.config, self.adapted.config_type
             )
@@ -106,7 +112,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         self, request: PlanResourceChange.Request, context: Any
     ) -> PlanResourceChange.Response:
         diagnostics = Diagnostics()
-        with exception_to_diagnostics(diagnostics):
+        with exception_to_diagnostics(diagnostics, "planning resource change"):
             resource = self._get_resource_by_name(request.type_name)
             prior_state = deserialize_dynamic_value_into_optional_attribute_class_instance(
                 request.prior_state, resource.config_type
@@ -150,7 +156,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         self, request: ApplyResourceChange.Request, context: Any
     ) -> ApplyResourceChange.Response:
         diagnostics = Diagnostics()
-        with exception_to_diagnostics(diagnostics):
+        with exception_to_diagnostics(diagnostics, "applying resource change"):
             resource = self._get_resource_by_name(request.type_name)
             prior_state = deserialize_dynamic_value_into_optional_attribute_class_instance(
                 request.prior_state, resource.config_type
@@ -179,7 +185,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         self, request: UpgradeResourceState.Request, context: Any
     ) -> UpgradeResourceState.Response:
         diagnostics = Diagnostics()
-        with exception_to_diagnostics(diagnostics):
+        with exception_to_diagnostics(diagnostics, "upgrading resource state"):
             resource = self._get_resource_by_name(request.type_name)
             state = (
                 deserialize_raw_state_into_optional_attribute_class_instance(
@@ -204,7 +210,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         self, request: ReadResource.Request, context: Any
     ) -> ReadResource.Response:
         diagnostics = Diagnostics()
-        with exception_to_diagnostics(diagnostics):
+        with exception_to_diagnostics(diagnostics, "reading resource"):
             resource = self._get_resource_by_name(request.type_name)
             current_state = (
                 deserialize_dynamic_value_into_attribute_class_instance(
@@ -230,7 +236,7 @@ class AdapterProviderServicer(L1BaseProviderServicer):
         self, request: ImportResourceState.Request, context: Any
     ) -> ImportResourceState.Response:
         diagnostics = Diagnostics()
-        with exception_to_diagnostics(diagnostics):
+        with exception_to_diagnostics(diagnostics, "importing resource"):
             resource = self._get_resource_by_name(request.type_name)
             # TODO come up w/ way to allow importing multiple resources
             # TODO handle private
