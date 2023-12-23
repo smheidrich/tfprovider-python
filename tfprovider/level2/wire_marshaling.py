@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
+from datetime import date, datetime
 from typing import Any, Generic, TypeVar, cast
 
 import msgpack
 
 from .wire_format import (
     AttributeWireType,
-    ImmutableJsonishWithUnknown,
     ImmutableMsgPackish,
     RefinedUnknown,
     StringWireType,
@@ -24,29 +24,31 @@ W = TypeVar("W", bound=AttributeWireType[Any], covariant=True)
 # W_: type[AttributeWireType]
 # M_: type[ImmutableJsonish]
 
+T = TypeVar("T")
 
-class AttributeWireTypeUnmarshaler(ABC, Generic[W]):
+
+class AttributeWireTypeUnmarshaler(ABC, Generic[W, T]):
     attribute_wire_type: W
 
     @abstractmethod
-    def unmarshal_msgpack(
-        self, value: ImmutableMsgPackish
-    ) -> ImmutableJsonishWithUnknown:
+    def unmarshal_msgpack(self, value: ImmutableMsgPackish) -> T:
         pass
 
 
-class AttributeWireTypeMarshaler(ABC, Generic[W]):
+class AttributeWireTypeMarshaler(ABC, Generic[W, T]):
     attribute_wire_type: W
 
     # TODO for an attribute wire type of type W[M], this actually returns M,
     # but there is no way to express that in Python's current typing system
     # (needs generic bounds or HKTVs)
     @abstractmethod
-    def marshal_msgpack(self, value: Any) -> ImmutableMsgPackish:
+    def marshal_msgpack(self, value: T) -> ImmutableMsgPackish:
         pass
 
 
-class StringWireTypeUnmarshaler(AttributeWireTypeUnmarshaler[StringWireType]):
+class StringWireTypeUnmarshaler(
+    AttributeWireTypeUnmarshaler[StringWireType, str]
+):
     attribute_wire_type = StringWireType()
 
     def unmarshal_msgpack(self, value: ImmutableMsgPackish) -> str:
@@ -58,7 +60,7 @@ class StringWireTypeUnmarshaler(AttributeWireTypeUnmarshaler[StringWireType]):
         return value
 
 
-class StringWireTypeMarshaler(AttributeWireTypeMarshaler[StringWireType]):
+class StringWireTypeMarshaler(AttributeWireTypeMarshaler[StringWireType, str]):
     attribute_wire_type = StringWireType()
 
     def marshal_msgpack(self, value: Any) -> str:
@@ -70,36 +72,90 @@ class StringWireTypeMarshaler(AttributeWireTypeMarshaler[StringWireType]):
         return value
 
 
+class DateTimeAsStringWireTypeUnmarshaler(
+    AttributeWireTypeUnmarshaler[StringWireType, datetime]
+):
+    attribute_wire_type = StringWireType()
+
+    def unmarshal_msgpack(self, value: ImmutableMsgPackish) -> datetime:
+        if not isinstance(value, str):
+            raise TypeError(
+                f"expected string but got {value!r} which is of type "
+                f"{type(value)}"
+            )
+        return datetime.fromisoformat(value)
+
+
+class DateTimeAsStringWireTypeMarshaler(
+    AttributeWireTypeMarshaler[StringWireType, datetime]
+):
+    attribute_wire_type = StringWireType()
+
+    def marshal_msgpack(self, value: Any) -> str:
+        if not isinstance(value, datetime):
+            raise TypeError(
+                f"expected datetime but got {value!r} which is of type "
+                f"{type(value)}"
+            )
+        return value.isoformat()
+
+
+class DateAsStringWireTypeUnmarshaler(
+    AttributeWireTypeUnmarshaler[StringWireType, date]
+):
+    attribute_wire_type = StringWireType()
+
+    def unmarshal_msgpack(self, value: ImmutableMsgPackish) -> date:
+        if not isinstance(value, str):
+            raise TypeError(
+                f"expected string but got {value!r} which is of type "
+                f"{type(value)}"
+            )
+        return date.fromisoformat(value)
+
+
+class DateAsStringWireTypeMarshaler(
+    AttributeWireTypeMarshaler[StringWireType, date]
+):
+    attribute_wire_type = StringWireType()
+
+    def marshal_msgpack(self, value: Any) -> str:
+        if not isinstance(value, date):
+            raise TypeError(
+                f"expected date but got {value!r} which is of type "
+                f"{type(value)}"
+            )
+        return value.isoformat()
+
+
 M = TypeVar("M", bound=ImmutableMsgPackish)
 
 
 class OptionalWireTypeUnmarshaler(
-    AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+    AttributeWireTypeUnmarshaler[AttributeWireType[M], T | None]
 ):
     def __init__(
-        self, inner: AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+        self, inner: AttributeWireTypeUnmarshaler[AttributeWireType[M], T]
     ):
         self.inner = inner
         self.attribute_wire_type = inner.attribute_wire_type
 
-    def unmarshal_msgpack(
-        self, value: ImmutableMsgPackish
-    ) -> ImmutableJsonishWithUnknown:
+    def unmarshal_msgpack(self, value: ImmutableMsgPackish) -> T | None:
         return (
             self.inner.unmarshal_msgpack(value) if value is not None else None
         )
 
 
 class OptionalWireTypeMarshaler(
-    AttributeWireTypeMarshaler[AttributeWireType[M]]
+    AttributeWireTypeMarshaler[AttributeWireType[M], T | None]
 ):
     def __init__(
-        self, inner: AttributeWireTypeMarshaler[AttributeWireType[M]]
+        self, inner: AttributeWireTypeMarshaler[AttributeWireType[M], T]
     ):
         self.inner = inner
         self.attribute_wire_type = inner.attribute_wire_type
 
-    def marshal_msgpack(self, value: Any) -> M | None:
+    def marshal_msgpack(self, value: T | None) -> M | None:
         if value is None:
             return None
         # this type should be correct, but inferring it would require HKTVs
@@ -110,17 +166,15 @@ class OptionalWireTypeMarshaler(
 
 
 class MaybeUnknownWireTypeUnmarshaler(
-    AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+    AttributeWireTypeUnmarshaler[AttributeWireType[M], T | Unknown]
 ):
     def __init__(
-        self, inner: AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+        self, inner: AttributeWireTypeUnmarshaler[AttributeWireType[M], T]
     ):
         self.inner = inner
         self.attribute_wire_type = inner.attribute_wire_type
 
-    def unmarshal_msgpack(
-        self, value: ImmutableMsgPackish
-    ) -> ImmutableJsonishWithUnknown:
+    def unmarshal_msgpack(self, value: ImmutableMsgPackish) -> T | Unknown:
         if isinstance(value, msgpack.ExtType):
             if value.code == 0:
                 return UnrefinedUnknown()
@@ -133,15 +187,15 @@ class MaybeUnknownWireTypeUnmarshaler(
 
 
 class MaybeUnknownWireTypeMarshaler(
-    AttributeWireTypeMarshaler[AttributeWireType[M]]
+    AttributeWireTypeMarshaler[AttributeWireType[M], T | Unknown]
 ):
     def __init__(
-        self, inner: AttributeWireTypeMarshaler[AttributeWireType[M]]
+        self, inner: AttributeWireTypeMarshaler[AttributeWireType[M], T]
     ):
         self.inner = inner
         self.attribute_wire_type = inner.attribute_wire_type
 
-    def marshal_msgpack(self, value: Any) -> M | msgpack.ExtType:
+    def marshal_msgpack(self, value: T | Unknown) -> M | msgpack.ExtType:
         if isinstance(value, UnrefinedUnknown):
             return msgpack.ExtType(0, b"")
         elif isinstance(value, RefinedUnknown):

@@ -55,10 +55,11 @@ def attribute(
     description_kind: Union["StringKind", NotSet] = NOT_SET,
     deprecated: bool | NotSet = NOT_SET,
     # tfprovider
-    representation: WireRepresentation[M] | None = None,
+    representation: WireRepresentation[M, T] | None = None,
     wire_type: AttributeWireType[M] | None = None,
-    marshaler: AttributeWireTypeMarshaler[AttributeWireType[M]] | None = None,
-    unmarshaler: AttributeWireTypeUnmarshaler[AttributeWireType[M]]
+    marshaler: AttributeWireTypeMarshaler[AttributeWireType[M], T]
+    | None = None,
+    unmarshaler: AttributeWireTypeUnmarshaler[AttributeWireType[M], T]
     | None = None,
     # dataclasses
     **kwargs: Any,
@@ -111,7 +112,7 @@ def attributes_class(
     return _schema
 
 
-ANNOTATION_TO_REPRESENTATION: dict[Any, WireRepresentation[Any]] = {
+ANNOTATION_TO_REPRESENTATION: dict[Any, WireRepresentation[Any, Any]] = {
     str: StringWireRepresentation(),
     # TODO make this happen automatically
     (str | None): OptionalWireRepresentation(StringWireRepresentation()),
@@ -154,6 +155,9 @@ def attributes_class_to_usable(klass: type) -> list[Attribute[Any]]:
                 if (
                     wt := f.metadata["tfprovider"].get("wire_type") is not None
                 )
+                else rep.attribute_wire_type
+                if (rep := f.metadata["tfprovider"].get("representation"))
+                is not None
                 else ANNOTATION_TO_WIRE_TYPE[annotations[f.name]]
             ),
             **f.metadata["terraform"],
