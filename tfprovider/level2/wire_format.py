@@ -11,17 +11,17 @@ from typing import Generic, TypeAlias, TypeVar
 import msgpack
 
 
-@dataclass
+@dataclass(frozen=True)
 class Unknown:
     pass
 
 
-@dataclass
+@dataclass(frozen=True)
 class UnrefinedUnknown(Unknown):
     pass
 
 
-@dataclass
+@dataclass(frozen=True)
 class RefinedUnknown(Unknown):
     pass
 

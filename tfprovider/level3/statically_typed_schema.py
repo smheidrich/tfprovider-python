@@ -129,6 +129,16 @@ ANNOTATION_TO_REPRESENTATION: dict[Any, WireRepresentation[Any, Any]] = {
     (set[str] | None): OptionalWireRepresentation(
         SetWireRepresentation(StringWireRepresentation())
     ),
+    (set[str] | None | Unknown): MaybeUnknownWireRepresentation(
+        OptionalWireRepresentation(
+            SetWireRepresentation(StringWireRepresentation())
+        )
+    ),
+    (set[str | Unknown] | None): OptionalWireRepresentation(
+        SetWireRepresentation(
+            MaybeUnknownWireRepresentation(StringWireRepresentation())
+        )
+    ),
 }
 
 ANNOTATION_TO_WIRE_TYPE: dict[Any, AttributeWireType[Any]] = {
@@ -139,6 +149,12 @@ ANNOTATION_TO_WIRE_TYPE: dict[Any, AttributeWireType[Any]] = {
     (str | None | Unknown): StringWireType(),
     set[str]: SetWireType(StringWireType()),
     (set[str] | None): OptionalWireType(SetWireType(StringWireType())),
+    (set[str] | None | Unknown): OptionalWireType(
+        SetWireType(StringWireType())
+    ),
+    (set[str | Unknown] | None): OptionalWireType(
+        SetWireType(StringWireType())
+    ),
 }
 
 

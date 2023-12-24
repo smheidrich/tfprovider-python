@@ -181,7 +181,7 @@ class MaybeUnknownWireTypeUnmarshaler(
             if value.code == 0:
                 return UnrefinedUnknown()
             elif value.code == 12:
-                raise NotImplementedError("")
+                return UnrefinedUnknown()  # TODO actually return refined UK
             else:
                 return Unknown()
         else:
@@ -201,7 +201,7 @@ class MaybeUnknownWireTypeMarshaler(
         if isinstance(value, UnrefinedUnknown):
             return msgpack.ExtType(0, b"")
         elif isinstance(value, RefinedUnknown):
-            raise NotImplementedError("")
+            raise msgpack.ExtType(0, b"")  # TODO actually return refined UK
         elif isinstance(value, Unknown):
             assert False, "should never happen (exhaustive)"
         else:
