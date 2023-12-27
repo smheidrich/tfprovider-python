@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tfprovider"
-version = "0.1.0"
+version = "0.1.1"
 description = "Implement Terraform providers in Python"
 authors = ["smheidrich <smheidrich@weltenfunktion.de>"]
 readme = "README.md"
