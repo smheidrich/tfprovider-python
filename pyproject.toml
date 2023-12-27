@@ -7,7 +7,7 @@ readme = "README.md"
 homepage = "https://smheidrich.gitlab.io/tfprovider-python/"
 repository = "https://gitlab.com/smheidrich/tfprovider-python"
 documentation = "https://smheidrich.gitlab.io/tfprovider-python/"
-license = "MIT"
+license = "MPL-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.11"
