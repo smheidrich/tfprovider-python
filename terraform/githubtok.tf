@@ -1,4 +1,4 @@
-provider "githubtok" {
+provider "githubfinetok" {
 }
 
 # TODO this has a bootstrapping problem in that the GitHub provider itself
@@ -6,15 +6,15 @@ provider "githubtok" {
 #   GitHub resource refresh not working with the unknown value. workaround
 #   is to only apply this resource and nothing else, which can be done via
 #   apply-github-tokens-only.sh
-resource githubtok_token "create_project_token" {
-  provider = githubtok
+resource githubfinetok_token "create_project_token" {
+  provider = githubfinetok
   name = "create-${var.project_name}"
   expires = "2024-12-10"
   write_permissions = ["administration", "contents"]
 }
 
-resource githubtok_token "mirror_token" {
-  provider = githubtok
+resource githubfinetok_token "mirror_token" {
+  provider = githubfinetok
   name = "mirror-${var.project_name}"
   expires = "2024-12-10"
   write_permissions = ["contents", "actions"]

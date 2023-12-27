@@ -22,7 +22,7 @@ resource "gitlab_tag_protection" "protect_v_tags" {
 
 resource "gitlab_project_mirror" "github_mirror" {
   project = gitlab_project.project.id
-  url     = "https://${data.github_user.current.login}:${githubtok_token.mirror_token.value}@github.com/${data.github_user.current.login}/${var.project_name}.git"
+  url     = "https://${data.github_user.current.login}:${githubfinetok_token.mirror_token.value}@github.com/${data.github_user.current.login}/${var.project_name}.git"
 }
 
 resource "gitlab_project_milestone" "v1" {

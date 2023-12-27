@@ -8,9 +8,9 @@ terraform {
       source = "integrations/github"
       version = "5.18.0"
     }
-    githubtok = {
-      source = "local/github-fine-grained-token"
-      version = "0.1.0"
+    githubfinetok = {
+      source = "smheidrich/github-fine-grained-token"
+      version = "0.1.0-rc6"
     }
   }
 }

@@ -1,0 +1,20 @@
+# for state backend (mainly used for init and import scripts)
+export PROJECT_ID="123456789"
+export TF_USERNAME="myuser"
+export TF_PASSWORD="mypw"
+export TF_ADDRESS="https://gitlab.com/api/v4/projects/${PROJECT_ID}/terraform/state/state"
+
+# for main config:
+
+# GitLab
+export TF_VAR_gitlab_token="$TF_PASSWORD"
+# GitHub
+# (nothing b/c githubfinetok provider does that now)
+# common
+export TF_VAR_project_name="tfprovider-python"
+export TF_VAR_project_description="Write Terraform providers in Python"
+# PyPI (used in GitLab vars)
+export TF_VAR_pypi_token="mytoken3"
+# TODO remove once githubfinetok provider uses keyring:
+export GITHUB_USER=example
+export GITHUB_PASS=example

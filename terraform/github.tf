@@ -1,5 +1,5 @@
 provider "github" {
-  token = githubtok_token.create_project_token.value
+  token = githubfinetok_token.create_project_token.value
 }
 
 resource "github_repository" "project" {
