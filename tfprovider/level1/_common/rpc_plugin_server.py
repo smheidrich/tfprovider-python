@@ -8,7 +8,7 @@ class RPCPluginServerBase(ExtRPCPluginServerBase):
     def __init__(
         self,
         provider_servicer: tfplugin6_4_pb2_grpc.ProviderServicer,
-        port: str = "1234",
+        port: str = "0",
     ):
         super().__init__(port=port)
         tfplugin6_4_pb2_grpc.add_ProviderServicer_to_server(  # type: ignore
